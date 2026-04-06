@@ -44,7 +44,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     if (!regPass) { setError("Please enter a password."); return; }
     users[email] = {
       name: regName, username: regUser.trim(), pass: regPass,
-      setupComplete: false, profile: { major: "", gpa: "", aps: [], gradYear: "2027" }
+      setupComplete: false, profile: { major: "", gpa: "", aps: [], gradYear: "2027", clubs: [] }
     };
     saveUsers(users);
     setView("login");
