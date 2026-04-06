@@ -14,7 +14,6 @@ const Index = () => {
   const [email, setEmail] = useState<string | null>(null);
   const [page, setPage] = useState("home");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showSpin, setShowSpin] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -41,15 +40,7 @@ const Index = () => {
   const handleOnboardingComplete = useCallback(() => {
     setAppState("app");
     setPage("home");
-    // Trigger spin animation for new signups
-    const users = getUsers();
-    if (email && users[email]?.isNewSignup) {
-      setShowSpin(true);
-      users[email].isNewSignup = false;
-      saveUsers(users);
-      setTimeout(() => setShowSpin(false), 4000);
-    }
-  }, [email]);
+  }, []);
 
   const handleLogout = useCallback(() => {
     clearSession();
@@ -68,10 +59,23 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppNav currentPage={page} onNavigate={setPage} onLogout={handleLogout} />
-      {page === "home" && <HomePage username={user.username} showSpin={showSpin} />}
+      {page === "home" && (
+        <HomePage
+          username={user.username}
+          gradYear={user.profile.gradYear}
+          profile={{
+            serviceHours: user.profile.serviceHours || 0,
+            isST: user.profile.isST || false,
+            aps: user.profile.aps || [],
+            clubs: user.profile.clubs || [],
+            extracurriculars: user.profile.extracurriculars || [],
+            achievements: user.profile.achievements || [],
+          }}
+        />
+      )}
       {page === "matches" && <MatchesPage key={refreshKey} profile={user.profile} email={email!} />}
       {page === "portfolio" && (
-        <PortfolioPage email={email!} profile={user.profile}
+        <PortfolioPage email={email!} profile={user.profile} userName={user.name}
           onUpdate={() => { setRefreshKey(k => k + 1); setPage("home"); }} />
       )}
     </div>

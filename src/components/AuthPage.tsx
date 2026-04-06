@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, setSession, User } from "@/lib/store";
+import { getUsers, saveUsers, setSession, getDefaultProfile } from "@/lib/store";
 
 interface AuthPageProps {
   onLogin: (email: string) => void;
@@ -44,7 +44,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     if (!regPass) { setError("Please enter a password."); return; }
     users[email] = {
       name: regName, username: regUser.trim(), pass: regPass,
-      setupComplete: false, profile: { major: "", gpa: "", aps: [], gradYear: "2027", clubs: [] }
+      setupComplete: false, profile: getDefaultProfile(), bookmarks: []
     };
     saveUsers(users);
     setView("login");
@@ -71,7 +71,6 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
         <h1 className="text-3xl font-bold text-primary mb-6">RaidersMatch</h1>
-
         {error && <p className="text-destructive text-sm mb-4">{error}</p>}
 
         {view === "login" && (
