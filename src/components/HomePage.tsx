@@ -1,12 +1,13 @@
 interface HomePageProps {
   username: string;
+  showSpin?: boolean;
 }
 
-const HomePage = ({ username }: HomePageProps) => {
+const HomePage = ({ username, showSpin }: HomePageProps) => {
   return (
     <div>
-      <div className="home-bg text-primary-foreground py-16 px-5">
-        <div className="max-w-4xl mx-auto">
+      <div className={`home-bg text-primary-foreground py-16 px-5 relative overflow-hidden ${showSpin ? 'home-spin-active' : ''}`}>
+        <div className="max-w-4xl mx-auto relative z-10">
           <h2 className="text-4xl font-bold mb-2">Welcome, {username}!</h2>
           <div className="bg-card/10 backdrop-blur-sm border-l-4 border-secondary rounded-r-xl p-6 mt-6">
             <h3 className="text-xl font-semibold text-secondary mb-2">ERHS Students for Success</h3>
@@ -20,7 +21,7 @@ const HomePage = ({ username }: HomePageProps) => {
               className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               ERHS Instagram 📸
             </a>
-            <a href="https://www.pgcps.org/eleanorroosevelthighschool/" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               School Site
             </a>
@@ -31,6 +32,14 @@ const HomePage = ({ username }: HomePageProps) => {
             <a href="https://www.pgcps.org/offices/student-services/school-counseling/scholarships" target="_blank" rel="noopener noreferrer"
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               Scholarships 🎓
+            </a>
+            <a href="https://pgcpsmd.scriborder.com/" target="_blank" rel="noopener noreferrer"
+              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              Student Transcript 📄
+            </a>
+            <a href="https://www.pgcps.org/offices/student-services/school-counseling/schoolinks" target="_blank" rel="noopener noreferrer"
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              MySchoolLinks 🔗
             </a>
           </div>
         </div>
