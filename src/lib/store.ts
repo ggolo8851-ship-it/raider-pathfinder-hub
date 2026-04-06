@@ -1,9 +1,15 @@
 export interface UserProfile {
   major: string;
   gpa: string;
+  sat: string;
+  act: string;
   aps: string[];
   gradYear: string;
   clubs: string[];
+  extracurriculars: string[];
+  achievements: string[];
+  serviceHours: number;
+  isST: boolean;
 }
 
 export interface User {
@@ -13,6 +19,7 @@ export interface User {
   setupComplete: boolean;
   profile: UserProfile;
   isNewSignup?: boolean;
+  bookmarks: string[];
 }
 
 export type UsersDB = Record<string, User>;
@@ -21,19 +28,12 @@ const DB_KEY = 'raider_db';
 const SESSION_KEY = 'raider_session';
 
 export const AP_LIST = [
-  // Capstone
   "AP Seminar", "AP Research",
-  // Math
   "AP Calculus AB", "AP Calculus BC", "AP Statistics",
-  // Science
   "AP Biology", "AP Chemistry", "AP Environmental Science", "AP Physics",
-  // English
   "AP English Language and Composition", "AP English Literature and Composition",
-  // Social Studies
   "AP US History", "AP Comparative Government and Politics", "AP World History",
-  // World Languages
   "AP Spanish Language and Culture", "AP Japanese", "AP French",
-  // Arts & CS
   "AP Computer Science A", "AP Computer Science Principles", "AP Art & Design",
 ];
 
@@ -62,6 +62,39 @@ export const ERHS_CLUBS = [
   "VEX Robotics", "WErSTEM", "West Indian Dance Team", "Women in Business",
   "Youth Climate Institute / Green Schools",
 ];
+
+export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]> = {
+  "2026": [
+    { label: "FAFSA Opens", deadline: "October 1, 2025" },
+    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2026" },
+    { label: "Common App Deadline (most schools)", deadline: "January 15, 2026" },
+    { label: "SRAR Submission", deadline: "February 15, 2026" },
+    { label: "AP Exam Registration", deadline: "November 15, 2025" },
+    { label: "Graduation", deadline: "June 2026" },
+  ],
+  "2027": [
+    { label: "Start SAT/ACT Prep", deadline: "Spring 2026" },
+    { label: "FAFSA Opens", deadline: "October 1, 2026" },
+    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2027" },
+    { label: "Common App Opens", deadline: "August 1, 2026" },
+    { label: "Graduation", deadline: "June 2027" },
+  ],
+  "2028": [
+    { label: "Begin College Research", deadline: "Fall 2026" },
+    { label: "Take PSAT", deadline: "October 2026" },
+    { label: "Start SAT/ACT Prep", deadline: "Spring 2027" },
+    { label: "Graduation", deadline: "June 2028" },
+  ],
+  "2029": [
+    { label: "Explore Interests & Clubs", deadline: "Fall 2025" },
+    { label: "Take PSAT 8/9", deadline: "October 2026" },
+    { label: "Graduation", deadline: "June 2029" },
+  ],
+};
+
+export function getDefaultProfile(): UserProfile {
+  return { major: "", gpa: "", sat: "", act: "", aps: [], gradYear: "2027", clubs: [], extracurriculars: [], achievements: [], serviceHours: 0, isST: false };
+}
 
 export function getUsers(): UsersDB {
   return JSON.parse(localStorage.getItem(DB_KEY) || '{}');
