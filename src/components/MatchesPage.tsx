@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { searchColleges, getCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
+import { Input } from "@/components/ui/input";
 
 interface MatchesPageProps {
   profile: UserProfile;
@@ -9,10 +10,12 @@ interface MatchesPageProps {
 
 const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [tab, setTab] = useState<"colleges" | "careers" | "bookmarks">("colleges");
-  const [distance, setDistance] = useState(5000);
+  const [distance, setDistance] = useState(0); // 0 = no limit
   const [sizeFilter, setSizeFilter] = useState("all");
   const [maxCost, setMaxCost] = useState(0);
+  const [customMaxCost, setCustomMaxCost] = useState("");
   const [tuitionType, setTuitionType] = useState<"out_of_state" | "in_state">("out_of_state");
+  const [stateFilter, setStateFilter] = useState("all"); // "all", "maryland", "out_of_state"
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [careers, setCareers] = useState<CareerMatch[]>([]);
@@ -25,19 +28,20 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   }, [email]);
 
   useEffect(() => {
-    setCareers(getCareerMatches(profile.major, profile.aps, profile.clubs || []));
-  }, [profile.major, profile.aps, profile.clubs]);
+    setCareers(getCareerMatches(profile.major, profile.aps, profile.clubs || [], profile.sports || [], profile.isST));
+  }, [profile.major, profile.aps, profile.clubs, profile.sports, profile.isST]);
 
   useEffect(() => {
     if (tab === "colleges" || tab === "bookmarks") {
       setLoading(true);
-      const filters: SearchFilters = { distance, sizeFilter, maxCost, tuitionType };
+      const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
+      const filters: SearchFilters = { distance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter };
       searchColleges(profile.major, filters, email, profile.gpa, profile.aps, profile.clubs || [], profile.sat || "", profile.act || "")
         .then(setColleges)
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
-  }, [profile.major, distance, tab, sizeFilter, maxCost, tuitionType, email, profile.gpa, profile.aps, profile.clubs, profile.sat, profile.act]);
+  }, [profile.major, distance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, email, profile.gpa, profile.aps, profile.clubs, profile.sat, profile.act]);
 
   const toggleBookmark = (collegeId: string) => {
     const users = getUsers();
@@ -72,7 +76,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           </div>
           <h4 className="text-lg font-bold text-primary mt-1">{c.name}</h4>
           <p className="text-sm text-muted-foreground">
-            {c.city}, {c.state} • <b>{c.miles.toFixed(0)} mi</b>
+            {c.city}, {c.state} • <b>{c.miles.toFixed(0)} mi</b> from ERHS
             {c.enrollment && <> • {c.enrollment.toLocaleString()} students ({c.size})</>}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -106,10 +110,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance from ERHS:</b> {c.miles.toFixed(1)} miles</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " virtual tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>
         </div>
       )}
@@ -122,7 +127,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         {(["colleges", "careers", "bookmarks"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-6 py-2.5 rounded-lg font-semibold transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-            {t === "colleges" ? "🎓 College Matches" : t === "careers" ? "💼 Career Matches" : "⭐ Bookmarks"}
+            {t === "colleges" ? "🎓 College Matches" : t === "careers" ? "💼 Career Matches" : `⭐ Bookmarks (${bookmarks.length})`}
           </button>
         ))}
       </div>
@@ -132,12 +137,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           {tab === "colleges" && (
             <div className="mb-6 space-y-4">
               <div>
-                <label className="text-sm font-semibold text-foreground">Max Distance: {distance >= 5000 ? "No Limit" : `${distance} miles`}</label>
-                <input type="range" min="50" max="5000" step="50" value={distance}
+                <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
+                <input type="range" min="0" max="3000" step="25" value={distance}
                   onChange={e => setDistance(Number(e.target.value))}
                   className="w-full mt-2 accent-primary" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>No Limit</span>
+                  <span>3000 mi</span>
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -159,13 +168,28 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-foreground">Max Tuition/Year</label>
-                  <select value={maxCost} onChange={e => setMaxCost(Number(e.target.value))}
+                  <select value={maxCost} onChange={e => { setMaxCost(Number(e.target.value)); setCustomMaxCost(""); }}
                     className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
                     <option value="0">No Limit</option>
                     <option value="10000">Under $10,000</option>
                     <option value="20000">Under $20,000</option>
                     <option value="30000">Under $30,000</option>
+                    <option value="40000">Under $40,000</option>
                     <option value="50000">Under $50,000</option>
+                    <option value="60000">Under $60,000</option>
+                    <option value="80000">Under $80,000</option>
+                  </select>
+                  <Input type="number" placeholder="Custom max $" value={customMaxCost}
+                    onChange={e => { setCustomMaxCost(e.target.value); setMaxCost(0); }}
+                    className="mt-1 text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">State</label>
+                  <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All States</option>
+                    <option value="maryland">Maryland Only</option>
+                    <option value="out_of_state">Out-of-State Only</option>
                   </select>
                 </div>
               </div>
@@ -186,7 +210,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       {tab === "careers" && (
         <div>
           <p className="text-sm text-muted-foreground mb-6">
-            Based on your interest in <b>{profile.major || "your selected field"}</b>, AP courses, and club involvement
+            Based on your interest in <b>{profile.major || "your selected field"}</b>, AP courses, clubs, sports, and {profile.isST ? "S/T program" : "activities"}
           </p>
           {careers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Update your profile with a major to see career matches.</p>

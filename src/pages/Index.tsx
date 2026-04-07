@@ -6,6 +6,9 @@ import AppNav from "@/components/AppNav";
 import HomePage from "@/components/HomePage";
 import MatchesPage from "@/components/MatchesPage";
 import PortfolioPage from "@/components/PortfolioPage";
+import ClubsPage from "@/components/ClubsPage";
+import SATPage from "@/components/SATPage";
+import TranscriptsPage from "@/components/TranscriptsPage";
 
 type AppState = "auth" | "onboarding" | "app";
 
@@ -70,6 +73,7 @@ const Index = () => {
             clubs: user.profile.clubs || [],
             extracurriculars: user.profile.extracurriculars || [],
             achievements: user.profile.achievements || [],
+            sports: user.profile.sports || [],
           }}
         />
       )}
@@ -78,6 +82,9 @@ const Index = () => {
         <PortfolioPage email={email!} profile={user.profile} userName={user.name}
           onUpdate={() => { setRefreshKey(k => k + 1); setPage("home"); }} />
       )}
+      {page === "clubs" && <ClubsPage />}
+      {page === "sat" && <SATPage />}
+      {page === "transcripts" && <TranscriptsPage />}
     </div>
   );
 };
