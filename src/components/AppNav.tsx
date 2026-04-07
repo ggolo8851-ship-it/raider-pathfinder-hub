@@ -11,16 +11,19 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
     { id: "home", label: "Home" },
     { id: "portfolio", label: "Portfolio" },
     { id: "matches", label: "Matches" },
+    { id: "clubs", label: "Clubs" },
+    { id: "sat", label: "SAT/ACT" },
+    { id: "transcripts", label: "Transcripts" },
   ];
 
   return (
     <nav className="bg-primary border-b-4 border-secondary sticky top-0 z-50">
       <div className="max-w-6xl mx-auto flex justify-between items-center px-5 py-4">
         <span className="text-primary-foreground text-xl font-bold">RaidersMatch</span>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {links.map(l => (
             <button key={l.id} onClick={() => onNavigate(l.id)}
-              className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
                 currentPage === l.id
                   ? "bg-secondary text-secondary-foreground border-secondary font-semibold"
                   : "border-secondary text-primary-foreground hover:bg-secondary/20"
@@ -29,7 +32,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
             </button>
           ))}
           <button onClick={onLogout}
-            className="px-4 py-1.5 rounded-full text-sm border border-destructive text-destructive hover:bg-destructive/20 transition-colors">
+            className="px-3 py-1.5 rounded-full text-xs border border-destructive text-destructive hover:bg-destructive/20 transition-colors">
             Sign Out
           </button>
         </div>

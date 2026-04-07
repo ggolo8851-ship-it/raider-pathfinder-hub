@@ -10,11 +10,11 @@ interface HomePageProps {
     clubs: string[];
     extracurriculars: string[];
     achievements: string[];
+    sports: string[];
   };
 }
 
 const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
-  // Financial aid countdown - March 1 of grad year
   const marchDeadline = new Date(`March 1, ${gradYear}`);
   const now = new Date();
   const daysUntilMarch = Math.max(0, Math.ceil((marchDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -34,7 +34,6 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             </p>
           </div>
 
-          {/* Financial Aid Countdown */}
           {daysUntilMarch > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
               <p className="font-bold text-lg">⏳ Financial Aid Countdown: <span className="text-secondary">{daysUntilMarch} days</span> until MHEC Priority Deadline (March 1, {gradYear})</p>
@@ -42,15 +41,16 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             </div>
           )}
 
-          {/* S/T Alert */}
           {profile.isST && (
             <div className="bg-secondary/30 backdrop-blur-sm border-l-4 border-secondary rounded-r-xl p-4 mt-4">
               <p className="font-bold">🔬 S/T Program Student</p>
               <p className="text-sm text-primary-foreground/80">Remember: Math every year through Pre-Calc Honors+, 3-4 advanced STEM credits with at least 1 AP.</p>
+              {gradYear === "2026" && (
+                <p className="text-sm text-secondary font-bold mt-1">🔔 Seniors (Option 3): Complete your dual enrollment classes!</p>
+              )}
             </div>
           )}
 
-          {/* Service Hours Progress */}
           <div className="bg-card/10 backdrop-blur-sm rounded-xl p-4 mt-4">
             <p className="font-semibold mb-2">📋 Student Service Hours: {profile.serviceHours}/24</p>
             <div className="h-3 bg-primary-foreground/20 rounded-full overflow-hidden">
@@ -59,7 +59,6 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             {profile.serviceHours >= 24 && <p className="text-secondary text-sm mt-1 font-bold">✅ Requirement Complete!</p>}
           </div>
 
-          {/* Resource Links */}
           <div className="flex flex-wrap gap-3 mt-8">
             <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
               className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
@@ -67,7 +66,7 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             </a>
             <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              School Site
+              School Site 🏫
             </a>
             <a href="https://www.collegeboard.org/" target="_blank" rel="noopener noreferrer"
               className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
@@ -101,7 +100,6 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
         </div>
       </div>
 
-      {/* Raider Roadmap */}
       <div className="max-w-4xl mx-auto py-10 px-5">
         <h3 className="text-2xl font-bold text-primary mb-6">🗺️ Raider Roadmap — Class of {gradYear}</h3>
         <div className="space-y-3">
@@ -116,9 +114,8 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
           ))}
         </div>
 
-        {/* Profile Snapshot */}
         <h3 className="text-2xl font-bold text-primary mt-10 mb-4">📊 Your Profile Snapshot</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
             <p className="text-3xl font-bold text-primary">{profile.aps.length}</p>
             <p className="text-sm text-muted-foreground">AP Courses</p>
@@ -128,11 +125,15 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             <p className="text-sm text-muted-foreground">Clubs</p>
           </div>
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{profile.extracurriculars.length}</p>
+            <p className="text-3xl font-bold text-primary">{profile.sports.length}</p>
+            <p className="text-sm text-muted-foreground">Sports</p>
+          </div>
+          <div className="bg-card rounded-xl shadow-sm p-4 text-center">
+            <p className="text-3xl font-bold text-secondary">{profile.extracurriculars.length}</p>
             <p className="text-sm text-muted-foreground">Extracurriculars</p>
           </div>
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
-            <p className="text-3xl font-bold text-secondary">{profile.achievements.length}</p>
+            <p className="text-3xl font-bold text-primary">{profile.achievements.length}</p>
             <p className="text-sm text-muted-foreground">Achievements</p>
           </div>
         </div>

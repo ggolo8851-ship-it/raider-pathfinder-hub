@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS } from "@/lib/store";
 
 interface OnboardingFlowProps {
   email: string;
   onComplete: () => void;
 }
+
+const MAX_EXTRAS = 15;
 
 const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [step, setStep] = useState<"grad" | "profile" | "clubs" | "extra">("grad");
@@ -17,18 +19,25 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [gradYear, setGradYear] = useState("2027");
   const [selectedAps, setSelectedAps] = useState<string[]>([]);
   const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
+  const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [clubSearch, setClubSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>([]);
   const [newExtra, setNewExtra] = useState("");
   const [achievements, setAchievements] = useState<string[]>([]);
   const [newAchievement, setNewAchievement] = useState("");
   const [isST, setIsST] = useState(false);
+  const [testOptional, setTestOptional] = useState(false);
+  const [showExplore, setShowExplore] = useState(false);
 
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
   const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
+  const toggleSport = (sport: string) => setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
 
   const addExtra = () => {
-    if (newExtra.trim()) { setExtracurriculars(prev => [...prev, newExtra.trim()]); setNewExtra(""); }
+    if (newExtra.trim() && extracurriculars.length < MAX_EXTRAS) {
+      setExtracurriculars(prev => [...prev, newExtra.trim()]);
+      setNewExtra("");
+    }
   };
   const addAchievement = () => {
     if (newAchievement.trim()) { setAchievements(prev => [...prev, newAchievement.trim()]); setNewAchievement(""); }
@@ -38,9 +47,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
-      aps: selectedAps, clubs: selectedClubs,
+      aps: selectedAps, apScores: {},
+      clubs: selectedClubs,
       extracurriculars, achievements,
-      serviceHours: 0, isST
+      serviceHours: 0, isST, testOptional,
+      sports: selectedSports
     };
     users[email].setupComplete = true;
     users[email].isNewSignup = true;
@@ -91,6 +102,9 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
           {isST && (
             <div className="bg-secondary/20 border-l-4 border-secondary rounded-r-lg p-3 mb-4 text-xs text-foreground">
               ⚠️ S/T students must take math every year through Pre-Calculus Honors or higher, and need 3-4 advanced STEM credits including at least one AP.
+              {gradYear === "2026" && (
+                <p className="mt-2 font-bold text-destructive">🔔 Seniors doing Option 3 (Dual Enrollment): Remember to complete your required dual enrollment classes!</p>
+              )}
             </div>
           )}
 
@@ -101,21 +115,43 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
           </select>
 
           <label className="text-sm font-semibold text-foreground">Intended Major / Career</label>
-          <Input placeholder="e.g. Computer Science" value={major} onChange={e => setMajor(e.target.value)} className="mb-3" />
+          <Input placeholder="e.g. Computer Science (or leave blank if undecided)" value={major} onChange={e => { setMajor(e.target.value); setShowExplore(false); }} className="mb-1" />
+          <button onClick={() => setShowExplore(!showExplore)} className="text-xs text-secondary underline mb-2 block">
+            {showExplore ? "Hide career explorer" : "🔍 Undecided? Explore career paths"}
+          </button>
+          {showExplore && (
+            <div className="bg-muted/30 rounded-lg p-3 mb-3 space-y-2 max-h-48 overflow-y-auto">
+              {UNDECIDED_CAREER_EXPLORATIONS.map(c => (
+                <button key={c.field} onClick={() => { setMajor(c.majors[0]); setShowExplore(false); }}
+                  className="w-full text-left p-2 rounded hover:bg-muted transition-colors">
+                  <p className="font-semibold text-sm text-foreground">{c.field}</p>
+                  <p className="text-xs text-muted-foreground">{c.description}</p>
+                  <p className="text-xs text-primary mt-1">{c.majors.join(" • ")}</p>
+                </button>
+              ))}
+            </div>
+          )}
 
           <label className="text-sm font-semibold text-foreground">Current GPA</label>
           <Input type="number" step="0.1" placeholder="e.g. 3.5" value={gpa} onChange={e => setGpa(e.target.value)} className="mb-3" />
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="text-sm font-semibold text-foreground">SAT Score</label>
-              <Input type="number" placeholder="e.g. 1200" value={sat} onChange={e => setSat(e.target.value)} />
+          <label className="flex items-center gap-2 mb-2 cursor-pointer">
+            <input type="checkbox" checked={testOptional} onChange={() => setTestOptional(!testOptional)} className="accent-primary w-4 h-4" />
+            <span className="text-sm text-foreground">I'm going test-optional (no SAT/ACT)</span>
+          </label>
+
+          {!testOptional && (
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-sm font-semibold text-foreground">SAT Score</label>
+                <Input type="number" placeholder="e.g. 1200" value={sat} onChange={e => setSat(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-foreground">ACT Score</label>
+                <Input type="number" placeholder="e.g. 28" value={act} onChange={e => setAct(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-semibold text-foreground">ACT Score</label>
-              <Input type="number" placeholder="e.g. 28" value={act} onChange={e => setAct(e.target.value)} />
-            </div>
-          </div>
+          )}
 
           <label className="text-sm font-semibold text-foreground">APs Taken / Taking</label>
           <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
@@ -126,7 +162,7 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
               </label>
             ))}
           </div>
-          <Button onClick={() => setStep("clubs")} className="w-full">Next: Select Clubs</Button>
+          <Button onClick={() => setStep("clubs")} className="w-full">Next: Select Clubs & Sports</Button>
         </div>
       </div>
     );
@@ -135,11 +171,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   if (step === "clubs") {
     return (
       <div className="auth-bg min-h-screen flex items-center justify-center p-5">
-        <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
           <h2 className="text-2xl font-bold text-primary mb-4 text-center">ERHS Clubs & Organizations</h2>
           <p className="text-sm text-muted-foreground text-center mb-4">Select the ERHS clubs you're in — this affects your matches!</p>
           <Input placeholder="Search clubs..." value={clubSearch} onChange={e => setClubSearch(e.target.value)} className="mb-3" />
-          <div className="grid grid-cols-1 gap-1.5 max-h-56 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+          <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
             {filteredClubs.map(club => (
               <label key={club} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
@@ -148,6 +184,18 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
             ))}
           </div>
           <p className="text-xs text-muted-foreground mb-4">{selectedClubs.length} club(s) selected</p>
+
+          <h3 className="text-lg font-bold text-primary mb-2">🏅 Sports</h3>
+          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+            {ERHS_SPORTS.map(sport => (
+              <label key={sport} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
+                {sport}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">{selectedSports.length} sport(s) selected</p>
+
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep("profile")} className="flex-1">Back</Button>
             <Button onClick={() => setStep("extra")} className="flex-1">Next: Activities</Button>
@@ -157,19 +205,19 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     );
   }
 
-  // Extra step: extracurriculars + achievements
   return (
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold text-primary mb-4 text-center">Outside Activities & Achievements</h2>
 
         <label className="text-sm font-semibold text-foreground">Out-of-School Extracurriculars</label>
-        <p className="text-xs text-muted-foreground mb-2">Sports leagues, volunteer work, jobs, etc.</p>
+        <p className="text-xs text-muted-foreground mb-2">Sports leagues, volunteer work, jobs, etc. (max {MAX_EXTRAS})</p>
         <div className="flex gap-2 mb-2">
           <Input placeholder="e.g. Community Soccer League" value={newExtra} onChange={e => setNewExtra(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addExtra()} />
-          <Button onClick={addExtra} size="sm">Add</Button>
+          <Button onClick={addExtra} size="sm" disabled={extracurriculars.length >= MAX_EXTRAS}>Add</Button>
         </div>
+        <p className="text-xs text-muted-foreground mb-2">{extracurriculars.length}/{MAX_EXTRAS}</p>
         {extracurriculars.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {extracurriculars.map((e, i) => (
