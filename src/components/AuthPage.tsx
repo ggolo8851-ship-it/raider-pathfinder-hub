@@ -17,6 +17,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [regUser, setRegUser] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPass, setRegPass] = useState("");
+  const [regPhrase, setRegPhrase] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [resetPhrase, setResetPhrase] = useState("");
   const [resetNewPass, setResetNewPass] = useState("");
@@ -42,8 +43,10 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     if (users[email]) { setError("Email already in use."); return; }
     if (!regUser.trim()) { setError("Please choose a username."); return; }
     if (!regPass) { setError("Please enter a password."); return; }
+    if (!regPhrase.trim()) { setError("Please create a security phrase for password recovery."); return; }
     users[email] = {
       name: regName, username: regUser.trim(), pass: regPass,
+      securityPhrase: regPhrase.trim().toLowerCase(),
       setupComplete: false, profile: getDefaultProfile(), bookmarks: []
     };
     saveUsers(users);
@@ -57,7 +60,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     const email = resetEmail.toLowerCase().trim();
     if (!users[email]) { setError("No account found."); return; }
     if (!resetStep2) { setResetStep2(true); return; }
-    if (resetPhrase.toLowerCase().trim() === "raider gold success future") {
+    if (resetPhrase.trim().toLowerCase() === users[email].securityPhrase) {
       users[email].pass = resetNewPass;
       saveUsers(users);
       setResetStep2(false);
@@ -92,7 +95,9 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
             <Input placeholder="Full Name" value={regName} onChange={e => setRegName(e.target.value)} className="mb-3" />
             <Input placeholder="Username" value={regUser} onChange={e => setRegUser(e.target.value)} className="mb-3" />
             <Input placeholder="Email" value={regEmail} onChange={e => setRegEmail(e.target.value)} className="mb-3" />
-            <Input type="password" placeholder="Password" value={regPass} onChange={e => setRegPass(e.target.value)} className="mb-4" />
+            <Input type="password" placeholder="Password" value={regPass} onChange={e => setRegPass(e.target.value)} className="mb-3" />
+            <Input placeholder="Create a security phrase (for password reset)" value={regPhrase} onChange={e => setRegPhrase(e.target.value)} className="mb-1" />
+            <p className="text-xs text-muted-foreground mb-4">This phrase is unique to you and will be used to reset your password.</p>
             <Button onClick={handleSignup} className="w-full mb-3">Register</Button>
             <button onClick={() => setView("login")} className="text-sm text-muted-foreground underline">Back</button>
           </>
@@ -104,8 +109,8 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
             <Input placeholder="Your Email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} className="mb-3" />
             {resetStep2 && (
               <>
-                <p className="text-xs text-muted-foreground mb-2">Phrase: raider gold success future</p>
-                <Input placeholder="Enter security phrase" value={resetPhrase} onChange={e => setResetPhrase(e.target.value)} className="mb-3" />
+                <p className="text-xs text-muted-foreground mb-2">Enter the security phrase you created during sign up.</p>
+                <Input placeholder="Enter your security phrase" value={resetPhrase} onChange={e => setResetPhrase(e.target.value)} className="mb-3" />
                 <Input type="password" placeholder="New Password" value={resetNewPass} onChange={e => setResetNewPass(e.target.value)} className="mb-3" />
               </>
             )}
