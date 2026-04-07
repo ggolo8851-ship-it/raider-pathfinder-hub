@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS } from "@/lib/store";
+import { generateResumePDF } from "@/lib/resume-builder";
 
 interface PortfolioPageProps {
   email: string;
