@@ -26,7 +26,6 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-// Maps major to the field name we want to READ (not filter by)
 function getMajorField(major: string): string {
   const m = major.toLowerCase();
   if (m.includes("nurse") || m.includes("health") || m.includes("med")) return "latest.academics.program_percentage.health";
@@ -118,18 +117,17 @@ function calculateFitScore(
   if (gpa >= 3.5) score += 3;
   else if (gpa >= 3.0) score += 1;
 
-  // Proximity bonus (closer = slight bonus)
-  if (miles < 100) score += 3;
+  if (miles < 50) score += 4;
+  else if (miles < 100) score += 3;
   else if (miles < 300) score += 2;
   else if (miles < 500) score += 1;
 
-  // Club alignment
   const clubStr = clubs.join(" ").toLowerCase();
   const m = major.toLowerCase();
   if ((m.includes("computer") || m.includes("tech")) && (clubStr.includes("programming") || clubStr.includes("robotics") || clubStr.includes("git") || clubStr.includes("stem"))) score += 2;
-  if ((m.includes("bus") || m.includes("financ")) && (clubStr.includes("fbla") || clubStr.includes("women in business"))) score += 2;
+  if ((m.includes("bus") || m.includes("financ")) && (clubStr.includes("fbla") || clubStr.includes("women in business") || clubStr.includes("investment"))) score += 2;
   if ((m.includes("health") || m.includes("med")) && clubStr.includes("healthcare")) score += 2;
-  if ((m.includes("law") || m.includes("legal")) && (clubStr.includes("mock trial") || clubStr.includes("debate"))) score += 2;
+  if ((m.includes("law") || m.includes("legal")) && (clubStr.includes("mock trial") || clubStr.includes("debate") || clubStr.includes("model united nations"))) score += 2;
   if (m.includes("engineer") && (clubStr.includes("robotics") || clubStr.includes("stem") || clubStr.includes("olympiad"))) score += 2;
 
   score += 1 + rand() * 4;
@@ -137,10 +135,11 @@ function calculateFitScore(
 }
 
 export interface SearchFilters {
-  distance: number;
+  distance: number; // 0 = no limit
   sizeFilter: string;
   maxCost: number;
   tuitionType: "out_of_state" | "in_state";
+  stateFilter: string; // "all", "maryland", "out_of_state"
 }
 
 export async function searchColleges(
@@ -156,7 +155,6 @@ export async function searchColleges(
   const queryField = getMajorField(major);
   const majorLabel = getMajorLabel(major);
 
-  // DO NOT filter by program_percentage - just request fields we need
   const fields = [
     "id",
     "school.name", "school.city", "school.state", "school.school_url",
@@ -167,8 +165,12 @@ export async function searchColleges(
     "latest.admissions.sat_scores.average.overall"
   ].join(",");
 
-  // Fetch operating schools - no program filter in the query
-  const url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=100&sort=latest.admissions.admission_rate.overall:asc`;
+  let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=100&sort=latest.admissions.admission_rate.overall:asc`;
+
+  // Add state filter to API query
+  if (filters.stateFilter === "maryland") {
+    url += "&school.state=MD";
+  }
 
   const resp = await fetch(url);
   if (!resp.ok) throw new Error("API error");
@@ -216,8 +218,8 @@ export async function searchColleges(
     })
     .filter((c: CollegeResult | null) => {
       if (!c) return false;
-      // Distance is just a soft filter — always include but penalize distant ones in score
-      if (filters.distance < 5000 && c.miles > filters.distance) return false;
+      // Distance: 0 means no limit
+      if (filters.distance > 0 && c.miles > filters.distance) return false;
       if (filters.sizeFilter !== "all") {
         const sizeKey = c.size.toLowerCase().replace(" ", "");
         if (sizeKey !== filters.sizeFilter) return false;
@@ -226,6 +228,7 @@ export async function searchColleges(
         const cost = filters.tuitionType === "in_state" ? c.costInState : c.costOutState;
         if (cost && cost > filters.maxCost) return false;
       }
+      if (filters.stateFilter === "out_of_state" && c.state === "MD") return false;
       return true;
     })
     .sort((a: CollegeResult, b: CollegeResult) => b.fitScore - a.fitScore);
@@ -240,9 +243,10 @@ export interface CareerMatch {
   relatedClubs: string[];
 }
 
-export function getCareerMatches(major: string, aps: string[], clubs: string[]): CareerMatch[] {
+export function getCareerMatches(major: string, aps: string[], clubs: string[], sports: string[], isST: boolean): CareerMatch[] {
   const m = major.toLowerCase();
   const clubStr = clubs.join(" ").toLowerCase();
+  const sportStr = sports.join(" ").toLowerCase();
   const careers: CareerMatch[] = [];
 
   if (m.includes("computer") || m.includes("tech") || m.includes("software") || m.includes("it") ||
@@ -264,14 +268,14 @@ export function getCareerMatches(major: string, aps: string[], clubs: string[]):
     );
   }
   if (m.includes("bus") || m.includes("financ") || m.includes("account") || m.includes("econ") ||
-      clubStr.includes("fbla") || clubStr.includes("women in business")) {
+      clubStr.includes("fbla") || clubStr.includes("women in business") || clubStr.includes("investment")) {
     careers.push(
-      { title: "Financial Analyst", description: "Guide businesses and individuals on investment decisions", salaryRange: "$65K - $110K", growth: "9% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=financial%20analyst", relatedClubs: ["FBLA", "Women in Business"] },
+      { title: "Financial Analyst", description: "Guide businesses and individuals on investment decisions", salaryRange: "$65K - $110K", growth: "9% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=financial%20analyst", relatedClubs: ["FBLA", "Women in Business", "Investment Club"] },
       { title: "Marketing Manager", description: "Plan campaigns to generate interest in products", salaryRange: "$70K - $130K", growth: "10% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=marketing+manager", relatedClubs: ["FBLA", "Women in Business", "Media Club"] },
-      { title: "Accountant", description: "Prepare and examine financial records", salaryRange: "$55K - $90K", growth: "6% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=accountant", relatedClubs: ["FBLA", "Math Honor Society"] },
+      { title: "Investment Banker", description: "Help companies raise capital and manage mergers", salaryRange: "$85K - $200K+", growth: "7% (As fast as avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=investment+banking", relatedClubs: ["Investment Club", "FBLA", "Math Honor Society"] },
     );
   }
-  if (m.includes("engineer") || aps.includes("AP Physics") || aps.includes("AP Calculus BC") ||
+  if (m.includes("engineer") || aps.includes("AP Physics") || aps.includes("AP Calculus BC") || aps.includes("AP Precalculus") ||
       clubStr.includes("robotics") || clubStr.includes("werstem")) {
     careers.push(
       { title: "Mechanical Engineer", description: "Design and build mechanical systems", salaryRange: "$70K - $115K", growth: "7% (As fast as avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=mechanical%20engineer", relatedClubs: ["VEX Robotics", "WErSTEM"] },
@@ -279,52 +283,42 @@ export function getCareerMatches(major: string, aps: string[], clubs: string[]):
       { title: "Electrical Engineer", description: "Design electrical systems and equipment", salaryRange: "$75K - $120K", growth: "7% (As fast as avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=electrical%20engineer", relatedClubs: ["VEX Robotics", "Get Into Tech Club (GIT)"] },
     );
   }
-  if (m.includes("psych") || aps.includes("AP Psychology")) {
-    careers.push(
-      { title: "Clinical Psychologist", description: "Assess and treat mental health disorders", salaryRange: "$60K - $105K", growth: "6% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=clinical+psychologist", relatedClubs: ["Do Something Club", "National Honor Society"] },
-      { title: "School Counselor", description: "Help students develop social and academic skills", salaryRange: "$50K - $80K", growth: "10% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=school+counselor", relatedClubs: ["National Honor Society", "TLC"] },
-    );
-  }
-  if (m.includes("education") || m.includes("teach")) {
-    careers.push(
-      { title: "High School Teacher", description: "Instruct students in specific subject areas", salaryRange: "$45K - $75K", growth: "5% (Average)", searchLink: "https://www.indeed.com/jobs?q=high+school+teacher", relatedClubs: ["National Honor Society", "Math Honor Society"] },
-      { title: "Instructional Designer", description: "Create educational materials and curricula", salaryRange: "$55K - $85K", growth: "11% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=instructional%20designer", relatedClubs: ["National English Honor Society"] },
-    );
-  }
   if (m.includes("law") || m.includes("legal") || aps.includes("AP US History") || aps.includes("AP Comparative Government and Politics") ||
-      clubStr.includes("mock trial") || clubStr.includes("debate")) {
+      aps.includes("AP US Government and Politics") ||
+      clubStr.includes("mock trial") || clubStr.includes("debate") || clubStr.includes("model united nations")) {
     careers.push(
-      { title: "Paralegal", description: "Assist lawyers with case preparation", salaryRange: "$45K - $70K", growth: "12% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=paralegal", relatedClubs: ["ERHS Mock Trial", "Debate Club"] },
-      { title: "Attorney", description: "Advise and represent clients in legal matters", salaryRange: "$80K - $160K+", growth: "10% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=attorney", relatedClubs: ["ERHS Mock Trial", "Debate Club", "History Honor Society"] },
-      { title: "Policy Analyst", description: "Research and analyze policies for government and organizations", salaryRange: "$55K - $95K", growth: "8% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=policy+analyst", relatedClubs: ["Debate Club", "Seminar Club", "UNICEF Club"] },
+      { title: "Attorney", description: "Advise and represent clients in legal matters", salaryRange: "$80K - $160K+", growth: "10% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=attorney", relatedClubs: ["ERHS Mock Trial", "Debate Club", "Model United Nations (MUN)"] },
+      { title: "Diplomat / Foreign Service", description: "Represent national interests abroad", salaryRange: "$60K - $120K", growth: "5% (Average)", searchLink: "https://www.indeed.com/jobs?q=foreign+service", relatedClubs: ["Model United Nations (MUN)", "International Club"] },
+      { title: "Policy Analyst", description: "Research and analyze policies for government", salaryRange: "$55K - $95K", growth: "8% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=policy+analyst", relatedClubs: ["Debate Club", "Seminar Club", "UNICEF Club"] },
     );
   }
   if (m.includes("art") || m.includes("design") || m.includes("music") || aps.includes("AP Art & Design") ||
       clubStr.includes("art club") || clubStr.includes("theatre") || clubStr.includes("music")) {
     careers.push(
-      { title: "Graphic Designer", description: "Create visual concepts for media and publications", salaryRange: "$40K - $75K", growth: "3% (Slower than avg)", searchLink: "https://www.indeed.com/jobs?q=graphic+designer", relatedClubs: ["Art Club", "Fiber Arts Club", "Media Club"] },
+      { title: "Graphic Designer", description: "Create visual concepts for media", salaryRange: "$40K - $75K", growth: "3% (Slower than avg)", searchLink: "https://www.indeed.com/jobs?q=graphic+designer", relatedClubs: ["Art Club", "Fiber Arts Club", "Media Club"] },
       { title: "UX Designer", description: "Design user experiences for digital products", salaryRange: "$70K - $120K", growth: "16% (Much faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=UX%20designer", relatedClubs: ["Art Club", "Programming Club", "Media Club"] },
     );
   }
   if (m.includes("enviro") || m.includes("climate") || m.includes("sustain") ||
       clubStr.includes("environmental") || clubStr.includes("climate") || clubStr.includes("green")) {
     careers.push(
-      { title: "Environmental Scientist", description: "Protect the environment through research and analysis", salaryRange: "$55K - $95K", growth: "6% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=environmental+scientist", relatedClubs: ["Environmental Defense Club", "Youth Climate Institute / Green Schools", "Homegrown Heroes"] },
-      { title: "Sustainability Consultant", description: "Help organizations reduce environmental impact", salaryRange: "$60K - $100K", growth: "13% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=sustainability%20consultant", relatedClubs: ["Youth Climate Institute / Green Schools", "Environmental Defense Club"] },
+      { title: "Environmental Scientist", description: "Protect the environment through research", salaryRange: "$55K - $95K", growth: "6% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=environmental+scientist", relatedClubs: ["Environmental Defense Club", "Youth Climate Institute / Green Schools", "Homegrown Heroes"] },
     );
   }
-
-  if (careers.length === 0) {
+  // S/T program boost
+  if (isST && careers.length === 0) {
     careers.push(
-      { title: "Project Manager", description: "Lead teams and coordinate projects across industries", salaryRange: "$60K - $110K", growth: "7% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=project+manager", relatedClubs: [] },
-      { title: "Research Analyst", description: "Collect and analyze data for decision-making", salaryRange: "$50K - $85K", growth: "13% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=research+analyst", relatedClubs: [] },
+      { title: "Research Scientist", description: "Conduct research in STEM fields", salaryRange: "$65K - $120K", growth: "8% (Faster than avg)", searchLink: "https://www.linkedin.com/jobs/search/?keywords=research+scientist", relatedClubs: ["Science Olympiad Team", "National STEM Honor Society (NSTEM)", "WErSTEM"] },
+      { title: "Engineer (General)", description: "Apply science and math to solve problems", salaryRange: "$70K - $130K", growth: "7% (As fast as avg)", searchLink: "https://www.indeed.com/jobs?q=engineer", relatedClubs: ["VEX Robotics", "WErSTEM", "Get Into Tech Club (GIT)"] },
+    );
+  }
+  // Sports-related careers
+  if (sportStr.length > 0 && (m.includes("sport") || m.includes("kinesi") || m.includes("athletic"))) {
+    careers.push(
+      { title: "Sports Medicine Physician", description: "Treat athletic injuries and promote fitness", salaryRange: "$80K - $150K", growth: "9% (Faster than avg)", searchLink: "https://www.indeed.com/jobs?q=sports+medicine", relatedClubs: ["Future Healthcare Professionals"] },
+      { title: "Athletic Trainer", description: "Prevent and treat injuries for athletes", salaryRange: "$45K - $70K", growth: "17% (Much faster than avg)", searchLink: "https://www.indeed.com/jobs?q=athletic+trainer", relatedClubs: [] },
     );
   }
 
-  const seen = new Set<string>();
-  return careers.filter(c => {
-    if (seen.has(c.title)) return false;
-    seen.add(c.title);
-    return true;
-  });
+  return careers;
 }
