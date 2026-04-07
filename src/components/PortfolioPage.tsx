@@ -222,6 +222,9 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
         )}
 
         <Button onClick={handleSave} className="w-full mt-4">Save Profile</Button>
+        <Button variant="outline" onClick={() => generateResumePDF(userName, email, profile)} className="w-full mt-2">
+          📄 Download Resume PDF
+        </Button>
       </div>
     </div>
   );
