@@ -1,5 +1,3 @@
-import { Button } from "@/components/ui/button";
-
 interface AppNavProps {
   currentPage: string;
   onNavigate: (page: string) => void;
@@ -13,6 +11,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
     { id: "matches", label: "Matches" },
     { id: "clubs", label: "Clubs" },
     { id: "sat", label: "SAT/ACT" },
+    { id: "essays", label: "Essays" },
     { id: "transcripts", label: "Transcripts" },
   ];
 

@@ -9,6 +9,7 @@ import PortfolioPage from "@/components/PortfolioPage";
 import ClubsPage from "@/components/ClubsPage";
 import SATPage from "@/components/SATPage";
 import TranscriptsPage from "@/components/TranscriptsPage";
+import EssayPage from "@/components/EssayPage";
 
 type AppState = "auth" | "onboarding" | "app";
 
@@ -66,6 +67,7 @@ const Index = () => {
         <HomePage
           username={user.username}
           gradYear={user.profile.gradYear}
+          email={email!}
           profile={{
             serviceHours: user.profile.serviceHours || 0,
             isST: user.profile.isST || false,
@@ -84,6 +86,7 @@ const Index = () => {
       )}
       {page === "clubs" && <ClubsPage />}
       {page === "sat" && <SATPage />}
+      {page === "essays" && <EssayPage />}
       {page === "transcripts" && <TranscriptsPage />}
     </div>
   );

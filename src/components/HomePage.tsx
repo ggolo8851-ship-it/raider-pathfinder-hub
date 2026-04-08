@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
+import EmailSubscriptionBox from "@/components/EmailSubscriptionBox";
 
 interface HomePageProps {
   username: string;
   gradYear: string;
+  email: string;
   profile: {
     serviceHours: number;
     isST: boolean;
@@ -14,12 +17,31 @@ interface HomePageProps {
   };
 }
 
-const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
+const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
+  const [now, setNow] = useState(new Date());
+
+  // Live countdown timer - updates every second
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // MHEC Priority Deadline: March 1 of grad year
   const marchDeadline = new Date(`March 1, ${gradYear}`);
-  const now = new Date();
-  const daysUntilMarch = Math.max(0, Math.ceil((marchDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const msDiff = marchDeadline.getTime() - now.getTime();
+  const daysUntilMarch = Math.max(0, Math.ceil(msDiff / (1000 * 60 * 60 * 24)));
+  const hoursLeft = Math.max(0, Math.floor((msDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+  const minutesLeft = Math.max(0, Math.floor((msDiff % (1000 * 60 * 60)) / (1000 * 60)));
 
   const roadmap = ROADMAP_ITEMS[gradYear] || [];
+
+  // Determine upcoming deadlines with days remaining
+  const upcomingRoadmap = roadmap.map(item => {
+    const deadlineDate = new Date(item.deadline);
+    const isValidDate = !isNaN(deadlineDate.getTime());
+    const daysLeft = isValidDate ? Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    return { ...item, daysLeft, isValidDate, isPast: daysLeft !== null && daysLeft < 0 };
+  });
 
   return (
     <div>
@@ -34,9 +56,10 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             </p>
           </div>
 
-          {daysUntilMarch > 0 && (
+          {daysUntilMarch > 0 && msDiff > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
-              <p className="font-bold text-lg">⏳ Financial Aid Countdown: <span className="text-secondary">{daysUntilMarch} days</span> until MHEC Priority Deadline (March 1, {gradYear})</p>
+              <p className="font-bold text-lg">⏳ Financial Aid Countdown:
+                <span className="text-secondary"> {daysUntilMarch}d {hoursLeft}h {minutesLeft}m</span> until MHEC Priority Deadline (March 1, {gradYear})</p>
               <p className="text-sm text-primary-foreground/80">Howard P. Rawlings Grant & MD state aid require early filing!</p>
             </div>
           )}
@@ -68,33 +91,37 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               School Site 🏫
             </a>
-            <a href="https://www.collegeboard.org/" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high/calendar" target="_blank" rel="noopener noreferrer"
               className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              School Calendar 📅
+            </a>
+            <a href="https://www.collegeboard.org/" target="_blank" rel="noopener noreferrer"
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               CollegeBoard
             </a>
             <a href="https://www.pgcps.org/offices/student-services/school-counseling/scholarships" target="_blank" rel="noopener noreferrer"
-              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               Scholarships 🎓
             </a>
             <a href="https://pgcpsmd.scriborder.com/" target="_blank" rel="noopener noreferrer"
-              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               Transcript 📄
             </a>
             <a href="https://www.pgcps.org/offices/student-services/school-counseling/schoolinks" target="_blank" rel="noopener noreferrer"
-              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               SchooLinks 🔗
             </a>
             <a href="https://studentaid.gov/h/apply-for-aid/fafsa" target="_blank" rel="noopener noreferrer"
-              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               FAFSA 💰
             </a>
-            <a href="https://mdcaps.mhec.state.md.us/" target="_blank" rel="noopener noreferrer"
-              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+            <a href="https://mhec.maryland.gov/preparing/pages/financialaid/osfamdcapslive.aspx" target="_blank" rel="noopener noreferrer"
+              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               MHEC / MDCAPS 🏛️
             </a>
-            <a href="https://marylandsfaa.org/" target="_blank" rel="noopener noreferrer"
-              className="bg-primary-foreground text-primary px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              MSFAA (Dream Act) 🌟
+            <a href="https://financialaid.umd.edu/types-aid/aid-maryland-residents" target="_blank" rel="noopener noreferrer"
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              MD Financial Aid (UMD) 🌟
             </a>
           </div>
         </div>
@@ -103,13 +130,24 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
       <div className="max-w-4xl mx-auto py-10 px-5">
         <h3 className="text-2xl font-bold text-primary mb-6">🗺️ Raider Roadmap — Class of {gradYear}</h3>
         <div className="space-y-3">
-          {roadmap.map((item, i) => (
-            <div key={i} className="bg-card rounded-xl shadow-sm p-4 border-l-4 border-primary flex justify-between items-center">
+          {upcomingRoadmap.map((item, i) => (
+            <div key={i} className={`bg-card rounded-xl shadow-sm p-4 border-l-4 flex justify-between items-center ${
+              item.isPast ? "border-muted opacity-60" : item.daysLeft !== null && item.daysLeft <= 30 ? "border-destructive" : "border-primary"
+            }`}>
               <div>
                 <p className="font-semibold text-foreground">{item.label}</p>
                 <p className="text-sm text-muted-foreground">{item.deadline}</p>
               </div>
-              <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">Upcoming</span>
+              <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                item.isPast ? "bg-muted text-muted-foreground" :
+                item.daysLeft !== null && item.daysLeft <= 7 ? "bg-destructive/20 text-destructive" :
+                item.daysLeft !== null && item.daysLeft <= 30 ? "bg-secondary/20 text-secondary-foreground" :
+                "bg-muted text-muted-foreground"
+              }`}>
+                {item.isPast ? "Passed" :
+                 item.daysLeft !== null ? `${item.daysLeft} days left` :
+                 "Upcoming"}
+              </span>
             </div>
           ))}
         </div>
@@ -137,6 +175,9 @@ const HomePage = ({ username, gradYear, profile }: HomePageProps) => {
             <p className="text-sm text-muted-foreground">Achievements</p>
           </div>
         </div>
+
+        {/* Email Subscription Box */}
+        <EmailSubscriptionBox email={email} gradYear={gradYear} />
       </div>
     </div>
   );
