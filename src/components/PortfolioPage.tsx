@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS } from "@/lib/store";
 import { generateResumePDF } from "@/lib/resume-builder";
+import { geocodeAddress } from "@/lib/college-api";
+import VibePollQuiz from "@/components/VibePollQuiz";
 
 interface PortfolioPageProps {
   email: string;
@@ -12,6 +14,7 @@ interface PortfolioPageProps {
 }
 
 const MAX_EXTRAS = 15;
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 
 const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProps) => {
   const [major, setMajor] = useState(profile.major);
@@ -32,6 +35,13 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [isST, setIsST] = useState(profile.isST || false);
   const [testOptional, setTestOptional] = useState(profile.testOptional || false);
   const [showExplore, setShowExplore] = useState(false);
+  const [showVibeQuiz, setShowVibeQuiz] = useState(false);
+  // Address fields
+  const [address, setAddress] = useState(profile.address || "");
+  const [city, setCity] = useState(profile.city || "");
+  const [state, setState] = useState(profile.state || "MD");
+  const [zipcode, setZipcode] = useState(profile.zipcode || "");
+  const [saving, setSaving] = useState(false);
 
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
   const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
@@ -48,7 +58,16 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
     setApScores(prev => ({ ...prev, [ap]: score }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaving(true);
+    // Geocode address
+    let lat = profile.lat;
+    let lon = profile.lon;
+    if (address !== profile.address || city !== profile.city || state !== profile.state || zipcode !== profile.zipcode) {
+      const coords = await geocodeAddress(address, city, state, zipcode);
+      if (coords) { lat = coords.lat; lon = coords.lon; }
+    }
+
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
@@ -56,13 +75,41 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
       clubs: selectedClubs,
       extracurriculars, achievements,
       serviceHours, isST, testOptional,
-      sports: selectedSports
+      sports: selectedSports,
+      address, city, state, zipcode,
+      lat, lon,
+      vibeAnswers: profile.vibeAnswers || {},
+      emailSubscription: profile.emailSubscription || { enabled: false, interests: [] },
     };
     saveUsers(users);
+    setSaving(false);
     onUpdate();
   };
 
+  const handleVibeComplete = (answers: Record<string, string>) => {
+    const users = getUsers();
+    users[email].profile.vibeAnswers = answers;
+    saveUsers(users);
+    setShowVibeQuiz(false);
+  };
+
   const filteredClubs = ERHS_CLUBS.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
+
+  if (showVibeQuiz) {
+    return (
+      <div className="max-w-lg mx-auto py-10 px-5">
+        <div className="bg-card rounded-2xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold text-primary mb-2 text-center">🎯 Update Your College Vibe</h2>
+          <VibePollQuiz
+            initialAnswers={profile.vibeAnswers || {}}
+            onComplete={handleVibeComplete}
+            onBack={() => setShowVibeQuiz(false)}
+            showBackButton={true}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-5">
@@ -88,6 +135,23 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           className="w-full p-3 mb-3 border border-input rounded-lg bg-card">
           {GRAD_YEARS.map(y => <option key={y} value={y}>Class of {y}</option>)}
         </select>
+
+        {/* Address Section */}
+        <div className="bg-muted/30 rounded-lg p-3 mb-3 border border-input">
+          <label className="text-sm font-semibold text-foreground block mb-2">📍 Home Address (for college distance)</label>
+          <Input placeholder="Street Address" value={address} onChange={e => setAddress(e.target.value)} className="mb-2" />
+          <div className="grid grid-cols-3 gap-2">
+            <Input placeholder="City" value={city} onChange={e => setCity(e.target.value)} />
+            <select value={state} onChange={e => setState(e.target.value)}
+              className="p-2 border border-input rounded-lg bg-card text-sm">
+              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <Input placeholder="Zip" value={zipcode} onChange={e => setZipcode(e.target.value)} />
+          </div>
+          {profile.lat && profile.lon && (
+            <p className="text-xs text-green-600 mt-1">✅ Location saved — distances will be calculated from your address</p>
+          )}
+        </div>
 
         <label className="text-sm font-semibold">Intended Major / Career</label>
         <Input placeholder="e.g. Computer Science" value={major} onChange={e => { setMajor(e.target.value); setShowExplore(false); }} className="mb-1" />
@@ -221,7 +285,14 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           </div>
         )}
 
-        <Button onClick={handleSave} className="w-full mt-4">Save Profile</Button>
+        {/* Vibe Quiz */}
+        <Button variant="outline" onClick={() => setShowVibeQuiz(true)} className="w-full mt-2 mb-2">
+          🎯 Update College Vibe Quiz ({Object.keys(profile.vibeAnswers || {}).length}/{VIBE_POLL_QUESTIONS.length} answered)
+        </Button>
+
+        <Button onClick={handleSave} className="w-full mt-4" disabled={saving}>
+          {saving ? "Saving..." : "Save Profile"}
+        </Button>
         <Button variant="outline" onClick={() => generateResumePDF(userName, email, profile)} className="w-full mt-2">
           📄 Download Resume PDF
         </Button>

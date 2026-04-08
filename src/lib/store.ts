@@ -4,7 +4,7 @@ export interface UserProfile {
   sat: string;
   act: string;
   aps: string[];
-  apScores: Record<string, number>; // AP exam scores (1-5)
+  apScores: Record<string, number>;
   gradYear: string;
   clubs: string[];
   extracurriculars: string[];
@@ -13,6 +13,21 @@ export interface UserProfile {
   isST: boolean;
   testOptional: boolean;
   sports: string[];
+  // Address fields for distance calculation
+  address: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  // Cached geocoded coordinates
+  lat?: number;
+  lon?: number;
+  // Vibe poll answers
+  vibeAnswers?: Record<string, string>;
+  // Email subscription preferences
+  emailSubscription?: {
+    enabled: boolean;
+    interests: string[];
+  };
 }
 
 export interface User {
@@ -66,9 +81,9 @@ export const ERHS_CLUBS = [
   "Badminton Club",
   "Baking Club",
   "Cards4Kindness",
+  "Chess Club",
   "Class of 2027",
   "Class of 2028",
-  "Chess Club",
   "Cosmetology Club",
   "Creative Writing Club",
   "Crochet Club",
@@ -251,6 +266,7 @@ export const ERHS_COUNSELORS = [
   { name: "Ms. Martinez", alpha: "S-Z", email: "counselor.sz@pgcps.org", phone: "(301) 513-5400" },
 ];
 
+// 2024-2025 and 2025-2026 SAT dates from CollegeBoard
 export const SAT_DEADLINES = [
   { testDate: "March 8, 2025", regDeadline: "February 21, 2025", lateDeadline: "March 4, 2025" },
   { testDate: "May 3, 2025", regDeadline: "April 18, 2025", lateDeadline: "April 29, 2025" },
@@ -275,30 +291,110 @@ export const ACT_DEADLINES = [
   { testDate: "April 4, 2026", regDeadline: "February 27, 2026", lateDeadline: "March 13, 2026" },
 ];
 
+export const VIBE_POLL_QUESTIONS = [
+  {
+    id: "setting",
+    category: "Vibe & Atmosphere",
+    question: "If you were in a movie, would the background be...",
+    optionA: "🏙️ A bustling neon city",
+    optionB: "🌲 A quiet, historical forest town",
+    tagA: "urban", tagB: "rural",
+  },
+  {
+    id: "social",
+    category: "Vibe & Atmosphere",
+    question: "Your ideal Friday night?",
+    optionA: "🎉 100-person house party",
+    optionB: "🎲 4-person board game night",
+    tagA: "large_social", tagB: "small_social",
+  },
+  {
+    id: "aesthetic",
+    category: "Vibe & Atmosphere",
+    question: "Campus aesthetic preference?",
+    optionA: "🏢 Modern glass high-rises",
+    optionB: "🏰 Hogwarts-style brick & ivy",
+    tagA: "modern", tagB: "traditional",
+  },
+  {
+    id: "classsize",
+    category: "Academic Style",
+    question: "In class, would you rather...",
+    optionA: "👥 Be anonymous in a 500-seat lecture",
+    optionB: "🙋 Have the professor know your name",
+    tagA: "large_class", tagB: "small_class",
+  },
+  {
+    id: "study",
+    category: "Academic Style",
+    question: "Your ideal study spot?",
+    optionA: "📚 Silent library cubicle",
+    optionB: "☕ Noisy coffee shop with chatter",
+    tagA: "quiet_study", tagB: "social_study",
+  },
+  {
+    id: "climate",
+    category: "Lifestyle",
+    question: "Could you survive a winter where the sun sets at 4 PM?",
+    optionA: "❄️ Bring it on, I love snow!",
+    optionB: "☀️ No way, I need sunshine",
+    tagA: "cold_ok", tagB: "warm_pref",
+  },
+  {
+    id: "weekend",
+    category: "Lifestyle",
+    question: "On Saturdays, where are you?",
+    optionA: "🏈 At a massive football stadium",
+    optionB: "🛍️ Exploring a local thrift shop",
+    tagA: "big_sports", tagB: "local_culture",
+  },
+  {
+    id: "priority",
+    category: "Post-Grad Ambition",
+    question: "Which matters more to you?",
+    optionA: "🏛️ A prestigious name on your diploma",
+    optionB: "💰 Leaving college with zero debt",
+    tagA: "prestige", tagB: "value",
+  },
+  {
+    id: "career_support",
+    category: "Post-Grad Ambition",
+    question: "Career support style?",
+    optionA: "🎁 School hands you an internship",
+    optionB: "🔍 School teaches you to find your own",
+    tagA: "structured_career", tagB: "independent_career",
+  },
+  {
+    id: "quickfire",
+    category: "Quick Fire",
+    question: "Mountain view or Ocean breeze?",
+    optionA: "⛰️ Mountain view",
+    optionB: "🌊 Ocean breeze",
+    tagA: "mountain", tagB: "ocean",
+  },
+];
+
 export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]> = {
   "2026": [
-    { label: "FAFSA Opens", deadline: "October 1, 2025" },
-    { label: "SAT Test Date", deadline: "March 8, 2025" },
-    { label: "SAT Registration Deadline", deadline: "February 21, 2025" },
-    { label: "ACT Test Date", deadline: "April 5, 2025" },
-    { label: "ACT Registration Deadline", deadline: "February 28, 2025" },
-    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2026" },
+    { label: "FAFSA Opens for 2026-27", deadline: "October 1, 2025" },
+    { label: "AP Exam Registration Deadline", deadline: "November 15, 2025" },
     { label: "Common App Deadline (most schools)", deadline: "January 15, 2026" },
-    { label: "SRAR Submission", deadline: "February 15, 2026" },
-    { label: "AP Exam Registration", deadline: "November 15, 2025" },
-    { label: "AP Exams Begin", deadline: "May 5, 2025" },
-    { label: "Graduation", deadline: "June 2026" },
+    { label: "SRAR Submission Deadline", deadline: "February 15, 2026" },
+    { label: "SAT Test Date", deadline: "March 14, 2026" },
+    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2026" },
+    { label: "AP Exams Begin", deadline: "May 4, 2026" },
+    { label: "ERHS Graduation", deadline: "June 4, 2026" },
   ],
   "2027": [
     { label: "Start SAT/ACT Prep", deadline: "Spring 2026" },
     { label: "SAT Test Date", deadline: "March 14, 2026" },
     { label: "SAT Registration Deadline", deadline: "February 27, 2026" },
-    { label: "FAFSA Opens", deadline: "October 1, 2026" },
-    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2027" },
     { label: "Common App Opens", deadline: "August 1, 2026" },
+    { label: "FAFSA Opens for 2027-28", deadline: "October 1, 2026" },
     { label: "AP Exam Registration", deadline: "November 2026" },
+    { label: "MHEC MD State Aid Priority Deadline", deadline: "March 1, 2027" },
     { label: "AP Exams Begin", deadline: "May 2027" },
-    { label: "Graduation", deadline: "June 2027" },
+    { label: "ERHS Graduation", deadline: "June 2027" },
   ],
   "2028": [
     { label: "Begin College Research", deadline: "Fall 2026" },
@@ -306,13 +402,13 @@ export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]
     { label: "Start SAT/ACT Prep", deadline: "Spring 2027" },
     { label: "First SAT Opportunity", deadline: "August 2027" },
     { label: "ACT Registration Opens", deadline: "Summer 2027" },
-    { label: "Graduation", deadline: "June 2028" },
+    { label: "ERHS Graduation", deadline: "June 2028" },
   ],
   "2029": [
     { label: "Explore Interests & Clubs", deadline: "Fall 2025" },
     { label: "Take PSAT 8/9", deadline: "October 2026" },
     { label: "Start thinking about SAT/ACT", deadline: "Spring 2028" },
-    { label: "Graduation", deadline: "June 2029" },
+    { label: "ERHS Graduation", deadline: "June 2029" },
   ],
 };
 
@@ -322,7 +418,10 @@ export function getDefaultProfile(): UserProfile {
     aps: [], apScores: {}, gradYear: "2027",
     clubs: [], extracurriculars: [], achievements: [],
     serviceHours: 0, isST: false, testOptional: false,
-    sports: []
+    sports: [],
+    address: "", city: "", state: "MD", zipcode: "",
+    vibeAnswers: {},
+    emailSubscription: { enabled: false, interests: [] },
   };
 }
 

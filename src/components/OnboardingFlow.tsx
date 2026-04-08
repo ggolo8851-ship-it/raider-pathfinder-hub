@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS } from "@/lib/store";
+import { geocodeAddress } from "@/lib/college-api";
+import VibePollQuiz from "@/components/VibePollQuiz";
 
 interface OnboardingFlowProps {
   email: string;
@@ -11,7 +13,7 @@ interface OnboardingFlowProps {
 const MAX_EXTRAS = 15;
 
 const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
-  const [step, setStep] = useState<"grad" | "profile" | "clubs" | "extra">("grad");
+  const [step, setStep] = useState<"grad" | "profile" | "clubs" | "extra" | "polls">("grad");
   const [major, setMajor] = useState("");
   const [gpa, setGpa] = useState("");
   const [sat, setSat] = useState("");
@@ -28,6 +30,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [isST, setIsST] = useState(false);
   const [testOptional, setTestOptional] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
+  // Address fields
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("MD");
+  const [zipcode, setZipcode] = useState("");
 
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
   const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
@@ -43,7 +50,18 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     if (newAchievement.trim()) { setAchievements(prev => [...prev, newAchievement.trim()]); setNewAchievement(""); }
   };
 
-  const handleComplete = () => {
+  const handlePollsComplete = async (vibeAnswers: Record<string, string>) => {
+    // Geocode address
+    let lat: number | undefined;
+    let lon: number | undefined;
+    if (address || zipcode) {
+      const coords = await geocodeAddress(address, city, state, zipcode);
+      if (coords) {
+        lat = coords.lat;
+        lon = coords.lon;
+      }
+    }
+
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
@@ -51,7 +69,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
       clubs: selectedClubs,
       extracurriculars, achievements,
       serviceHours: 0, isST, testOptional,
-      sports: selectedSports
+      sports: selectedSports,
+      address, city, state, zipcode,
+      lat, lon,
+      vibeAnswers,
+      emailSubscription: { enabled: false, interests: [] },
     };
     users[email].setupComplete = true;
     users[email].isNewSignup = true;
@@ -61,6 +83,8 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   };
 
   const filteredClubs = ERHS_CLUBS.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
+
+  const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 
   if (step === "grad") {
     return (
@@ -113,6 +137,20 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
             className="w-full p-3 mb-3 border border-input rounded-lg bg-card">
             {GRAD_YEARS.map(y => <option key={y} value={y}>Class of {y}</option>)}
           </select>
+
+          {/* Address Section */}
+          <div className="bg-muted/30 rounded-lg p-3 mb-3 border border-input">
+            <label className="text-sm font-semibold text-foreground block mb-2">📍 Your Home Address (for college distance)</label>
+            <Input placeholder="Street Address" value={address} onChange={e => setAddress(e.target.value)} className="mb-2" />
+            <div className="grid grid-cols-3 gap-2">
+              <Input placeholder="City" value={city} onChange={e => setCity(e.target.value)} />
+              <select value={state} onChange={e => setState(e.target.value)}
+                className="p-2 border border-input rounded-lg bg-card text-sm">
+                {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <Input placeholder="Zip" value={zipcode} onChange={e => setZipcode(e.target.value)} />
+            </div>
+          </div>
 
           <label className="text-sm font-semibold text-foreground">Intended Major / Career</label>
           <Input placeholder="e.g. Computer Science (or leave blank if undecided)" value={major} onChange={e => { setMajor(e.target.value); setShowExplore(false); }} className="mb-1" />
@@ -205,52 +243,69 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     );
   }
 
+  if (step === "extra") {
+    return (
+      <div className="auth-bg min-h-screen flex items-center justify-center p-5">
+        <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <h2 className="text-2xl font-bold text-primary mb-4 text-center">Outside Activities & Achievements</h2>
+
+          <label className="text-sm font-semibold text-foreground">Out-of-School Extracurriculars</label>
+          <p className="text-xs text-muted-foreground mb-2">Sports leagues, volunteer work, jobs, etc. (max {MAX_EXTRAS})</p>
+          <div className="flex gap-2 mb-2">
+            <Input placeholder="e.g. Community Soccer League" value={newExtra} onChange={e => setNewExtra(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addExtra()} />
+            <Button onClick={addExtra} size="sm" disabled={extracurriculars.length >= MAX_EXTRAS}>Add</Button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">{extracurriculars.length}/{MAX_EXTRAS}</p>
+          {extracurriculars.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {extracurriculars.map((e, i) => (
+                <span key={i} className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  {e}
+                  <button onClick={() => setExtracurriculars(prev => prev.filter((_, j) => j !== i))} className="text-destructive font-bold">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <label className="text-sm font-semibold text-foreground">Notable Achievements & Awards</label>
+          <p className="text-xs text-muted-foreground mb-2">Honor roll, competition wins, certifications, etc.</p>
+          <div className="flex gap-2 mb-2">
+            <Input placeholder="e.g. Science Fair 1st Place" value={newAchievement} onChange={e => setNewAchievement(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addAchievement()} />
+            <Button onClick={addAchievement} size="sm">Add</Button>
+          </div>
+          {achievements.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {achievements.map((a, i) => (
+                <span key={i} className="bg-secondary/20 text-secondary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  {a}
+                  <button onClick={() => setAchievements(prev => prev.filter((_, j) => j !== i))} className="text-destructive font-bold">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={() => setStep("clubs")} className="flex-1">Back</Button>
+            <Button onClick={() => setStep("polls")} className="flex-1">Next: College Vibe Quiz 🎯</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Polls step
   return (
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
-      <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-primary mb-4 text-center">Outside Activities & Achievements</h2>
-
-        <label className="text-sm font-semibold text-foreground">Out-of-School Extracurriculars</label>
-        <p className="text-xs text-muted-foreground mb-2">Sports leagues, volunteer work, jobs, etc. (max {MAX_EXTRAS})</p>
-        <div className="flex gap-2 mb-2">
-          <Input placeholder="e.g. Community Soccer League" value={newExtra} onChange={e => setNewExtra(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addExtra()} />
-          <Button onClick={addExtra} size="sm" disabled={extracurriculars.length >= MAX_EXTRAS}>Add</Button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-2">{extracurriculars.length}/{MAX_EXTRAS}</p>
-        {extracurriculars.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {extracurriculars.map((e, i) => (
-              <span key={i} className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                {e}
-                <button onClick={() => setExtracurriculars(prev => prev.filter((_, j) => j !== i))} className="text-destructive font-bold">×</button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <label className="text-sm font-semibold text-foreground">Notable Achievements & Awards</label>
-        <p className="text-xs text-muted-foreground mb-2">Honor roll, competition wins, certifications, etc.</p>
-        <div className="flex gap-2 mb-2">
-          <Input placeholder="e.g. Science Fair 1st Place" value={newAchievement} onChange={e => setNewAchievement(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addAchievement()} />
-          <Button onClick={addAchievement} size="sm">Add</Button>
-        </div>
-        {achievements.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {achievements.map((a, i) => (
-              <span key={i} className="bg-secondary/20 text-secondary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                {a}
-                <button onClick={() => setAchievements(prev => prev.filter((_, j) => j !== i))} className="text-destructive font-bold">×</button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2 mt-4">
-          <Button variant="outline" onClick={() => setStep("clubs")} className="flex-1">Back</Button>
-          <Button onClick={handleComplete} className="flex-1">Complete</Button>
-        </div>
+      <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold text-primary mb-2 text-center">🎯 College Vibe Quiz</h2>
+        <p className="text-sm text-muted-foreground text-center mb-6">Quick "this or that" to find your perfect college match!</p>
+        <VibePollQuiz
+          onComplete={handlePollsComplete}
+          onBack={() => setStep("extra")}
+          showBackButton={true}
+        />
       </div>
     </div>
   );
