@@ -1,3 +1,8 @@
+export interface ClubRole {
+  club: string;
+  role: "Member" | "Management" | "Founder";
+}
+
 export interface UserProfile {
   major: string;
   gpa: string;
@@ -7,23 +12,20 @@ export interface UserProfile {
   apScores: Record<string, number>;
   gradYear: string;
   clubs: string[];
+  clubRoles: ClubRole[];
   extracurriculars: string[];
   achievements: string[];
   serviceHours: number;
   isST: boolean;
   testOptional: boolean;
   sports: string[];
-  // Address fields for distance calculation
   address: string;
   city: string;
   state: string;
   zipcode: string;
-  // Cached geocoded coordinates
   lat?: number;
   lon?: number;
-  // Vibe poll answers
   vibeAnswers?: Record<string, string>;
-  // Email subscription preferences
   emailSubscription?: {
     enabled: boolean;
     interests: string[];
@@ -39,6 +41,8 @@ export interface User {
   profile: UserProfile;
   isNewSignup?: boolean;
   bookmarks: string[];
+  resetToken?: string;
+  resetTokenExpiry?: number;
 }
 
 export type UsersDB = Record<string, User>;
@@ -47,6 +51,7 @@ const DB_KEY = 'raider_db';
 const SESSION_KEY = 'raider_session';
 
 export const AP_LIST = [
+  "AP African American Studies",
   "AP Art & Design",
   "AP Biology",
   "AP Calculus AB",
@@ -59,13 +64,16 @@ export const AP_LIST = [
   "AP English Literature and Composition",
   "AP Environmental Science",
   "AP French",
+  "AP Human Geography",
   "AP Japanese",
   "AP Physics",
   "AP Precalculus",
+  "AP Psychology",
   "AP Research",
   "AP Seminar",
   "AP Spanish Language and Culture",
   "AP Statistics",
+  "AP Studio Art 2D",
   "AP US Government and Politics",
   "AP US History",
   "AP World History",
@@ -151,20 +159,26 @@ export const ERHS_CLUBS = [
 ];
 
 export const ERHS_SPORTS = [
-  "Baseball (Varsity/JV)",
-  "Basketball (Boys Varsity/JV)",
-  "Basketball (Girls Varsity/JV)",
+  "Baseball (Varsity)",
+  "Baseball (JV)",
+  "Basketball (Boys Varsity)",
+  "Basketball (Boys JV)",
+  "Basketball (Girls Varsity)",
+  "Basketball (Girls JV)",
   "Cheerleading",
   "Cross Country",
-  "Football (Varsity/JV)",
+  "Football (Varsity)",
+  "Football (JV)",
   "Golf",
   "Gymnastics",
   "Indoor Track",
   "Lacrosse (Boys)",
   "Lacrosse (Girls)",
   "Outdoor Track & Field",
-  "Soccer (Boys)",
-  "Soccer (Girls)",
+  "Soccer (Boys Varsity)",
+  "Soccer (Boys JV)",
+  "Soccer (Girls Varsity)",
+  "Soccer (Girls JV)",
   "Softball",
   "Swimming & Diving",
   "Tennis (Boys)",
@@ -266,18 +280,25 @@ export const ERHS_COUNSELORS = [
   { name: "Ms. Martinez", alpha: "S-Z", email: "counselor.sz@pgcps.org", phone: "(301) 513-5400" },
 ];
 
-// 2024-2025 and 2025-2026 SAT dates from CollegeBoard
+// Updated SAT dates from CollegeBoard (2025-2026 testing year) — verified April 2026
 export const SAT_DEADLINES = [
-  { testDate: "March 8, 2025", regDeadline: "February 21, 2025", lateDeadline: "March 4, 2025" },
-  { testDate: "May 3, 2025", regDeadline: "April 18, 2025", lateDeadline: "April 29, 2025" },
-  { testDate: "June 7, 2025", regDeadline: "May 22, 2025", lateDeadline: "June 3, 2025" },
-  { testDate: "August 23, 2025", regDeadline: "August 8, 2025", lateDeadline: "August 19, 2025" },
-  { testDate: "October 4, 2025", regDeadline: "September 19, 2025", lateDeadline: "September 30, 2025" },
-  { testDate: "November 1, 2025", regDeadline: "October 17, 2025", lateDeadline: "October 28, 2025" },
-  { testDate: "December 6, 2025", regDeadline: "November 21, 2025", lateDeadline: "December 2, 2025" },
-  { testDate: "March 14, 2026", regDeadline: "February 27, 2026", lateDeadline: "March 10, 2026" },
-  { testDate: "May 9, 2026", regDeadline: "April 24, 2026", lateDeadline: "May 5, 2026" },
-  { testDate: "June 6, 2026", regDeadline: "May 22, 2026", lateDeadline: "June 2, 2026" },
+  { testDate: "August 23, 2025", regDeadline: "August 8, 2025", lateDeadline: "August 12, 2025" },
+  { testDate: "September 13, 2025", regDeadline: "August 29, 2025", lateDeadline: "September 2, 2025" },
+  { testDate: "October 4, 2025", regDeadline: "September 19, 2025", lateDeadline: "September 23, 2025" },
+  { testDate: "November 8, 2025", regDeadline: "October 24, 2025", lateDeadline: "October 28, 2025" },
+  { testDate: "December 6, 2025", regDeadline: "November 21, 2025", lateDeadline: "November 25, 2025" },
+  { testDate: "March 14, 2026", regDeadline: "February 27, 2026", lateDeadline: "March 3, 2026" },
+  { testDate: "May 2, 2026", regDeadline: "April 17, 2026", lateDeadline: "April 21, 2026" },
+  { testDate: "June 6, 2026", regDeadline: "May 22, 2026", lateDeadline: "May 26, 2026" },
+  // 2026-2027 confirmed dates
+  { testDate: "August 22, 2026", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "September 12, 2026", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "October 3, 2026", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "November 7, 2026", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "December 5, 2026", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "March 6, 2027", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "May 1, 2027", regDeadline: "TBD", lateDeadline: "TBD" },
+  { testDate: "June 5, 2027", regDeadline: "TBD", lateDeadline: "TBD" },
 ];
 
 export const ACT_DEADLINES = [
@@ -374,6 +395,22 @@ export const VIBE_POLL_QUESTIONS = [
   },
 ];
 
+// Maryland Standard High School Graduation Requirements (ALL credits)
+export const MD_GRADUATION_REQUIREMENTS = [
+  { subject: "English", credits: "4" },
+  { subject: "Mathematics (Algebra I through)", credits: "4" },
+  { subject: "Science (incl. Biology & Chemistry)", credits: "3" },
+  { subject: "Social Studies (incl. US History, World History, Gov)", credits: "3" },
+  { subject: "Physical Education", credits: "0.5" },
+  { subject: "Health Education", credits: "0.5" },
+  { subject: "Fine Arts", credits: "1" },
+  { subject: "Technology Education", credits: "1" },
+  { subject: "World Language / Advanced Tech Ed", credits: "2" },
+  { subject: "Electives", credits: "2" },
+  { subject: "Total Credits Required", credits: "21" },
+  { subject: "Student Service Learning", credits: "75 hours" },
+];
+
 export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]> = {
   "2026": [
     { label: "FAFSA Opens for 2026-27", deadline: "October 1, 2025" },
@@ -412,11 +449,17 @@ export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]
   ],
 };
 
+// Generate a random 6-digit OTP token
+export function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export function getDefaultProfile(): UserProfile {
   return {
     major: "", gpa: "", sat: "", act: "",
     aps: [], apScores: {}, gradYear: "2027",
-    clubs: [], extracurriculars: [], achievements: [],
+    clubs: [], clubRoles: [],
+    extracurriculars: [], achievements: [],
     serviceHours: 0, isST: false, testOptional: false,
     sports: [],
     address: "", city: "", state: "MD", zipcode: "",

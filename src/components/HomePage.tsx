@@ -20,13 +20,11 @@ interface HomePageProps {
 const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
   const [now, setNow] = useState(new Date());
 
-  // Live countdown timer - updates every second
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // MHEC Priority Deadline: March 1 of grad year
   const marchDeadline = new Date(`March 1, ${gradYear}`);
   const msDiff = marchDeadline.getTime() - now.getTime();
   const daysUntilMarch = Math.max(0, Math.ceil(msDiff / (1000 * 60 * 60 * 24)));
@@ -35,13 +33,15 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
 
   const roadmap = ROADMAP_ITEMS[gradYear] || [];
 
-  // Determine upcoming deadlines with days remaining
   const upcomingRoadmap = roadmap.map(item => {
     const deadlineDate = new Date(item.deadline);
     const isValidDate = !isNaN(deadlineDate.getTime());
     const daysLeft = isValidDate ? Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
     return { ...item, daysLeft, isValidDate, isPast: daysLeft !== null && daysLeft < 0 };
   });
+
+  // Service hours: MD requires 75 hours
+  const serviceTarget = 75;
 
   return (
     <div>
@@ -75,17 +75,17 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
           )}
 
           <div className="bg-card/10 backdrop-blur-sm rounded-xl p-4 mt-4">
-            <p className="font-semibold mb-2">📋 Student Service Hours: {profile.serviceHours}/24</p>
+            <p className="font-semibold mb-2">📋 Student Service Learning Hours: {profile.serviceHours}/{serviceTarget}</p>
             <div className="h-3 bg-primary-foreground/20 rounded-full overflow-hidden">
-              <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${Math.min(100, (profile.serviceHours / 24) * 100)}%` }} />
+              <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${Math.min(100, (profile.serviceHours / serviceTarget) * 100)}%` }} />
             </div>
-            {profile.serviceHours >= 24 && <p className="text-secondary text-sm mt-1 font-bold">✅ Requirement Complete!</p>}
+            {profile.serviceHours >= serviceTarget && <p className="text-secondary text-sm mt-1 font-bold">✅ Requirement Complete!</p>}
           </div>
 
           <div className="flex flex-wrap gap-3 mt-8">
             <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
               className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              ERHS Instagram 📸
+              ESS Instagram 📸
             </a>
             <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
@@ -176,7 +176,6 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
           </div>
         </div>
 
-        {/* Email Subscription Box */}
         <EmailSubscriptionBox email={email} gradYear={gradYear} />
       </div>
     </div>

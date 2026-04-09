@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS, ClubRole } from "@/lib/store";
 import { generateResumePDF } from "@/lib/resume-builder";
 import { geocodeAddress } from "@/lib/college-api";
 import VibePollQuiz from "@/components/VibePollQuiz";
@@ -15,6 +15,7 @@ interface PortfolioPageProps {
 
 const MAX_EXTRAS = 15;
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
+const CLUB_ROLES: ClubRole["role"][] = ["Member", "Management", "Founder"];
 
 const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProps) => {
   const [major, setMajor] = useState(profile.major);
@@ -25,6 +26,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [selectedAps, setSelectedAps] = useState<string[]>(profile.aps);
   const [apScores, setApScores] = useState<Record<string, number>>(profile.apScores || {});
   const [selectedClubs, setSelectedClubs] = useState<string[]>(profile.clubs || []);
+  const [clubRoles, setClubRoles] = useState<ClubRole[]>(profile.clubRoles || []);
   const [selectedSports, setSelectedSports] = useState<string[]>(profile.sports || []);
   const [clubSearch, setClubSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>(profile.extracurriculars || []);
@@ -36,7 +38,6 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [testOptional, setTestOptional] = useState(profile.testOptional || false);
   const [showExplore, setShowExplore] = useState(false);
   const [showVibeQuiz, setShowVibeQuiz] = useState(false);
-  // Address fields
   const [address, setAddress] = useState(profile.address || "");
   const [city, setCity] = useState(profile.city || "");
   const [state, setState] = useState(profile.state || "MD");
@@ -44,8 +45,21 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [saving, setSaving] = useState(false);
 
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
-  const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
+  const toggleClub = (club: string) => {
+    setSelectedClubs(prev => {
+      if (prev.includes(club)) {
+        setClubRoles(r => r.filter(cr => cr.club !== club));
+        return prev.filter(c => c !== club);
+      }
+      setClubRoles(r => [...r, { club, role: "Member" }]);
+      return [...prev, club];
+    });
+  };
   const toggleSport = (sport: string) => setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
+
+  const setClubRole = (club: string, role: ClubRole["role"]) => {
+    setClubRoles(prev => prev.map(cr => cr.club === club ? { ...cr, role } : cr));
+  };
 
   const addExtra = () => {
     if (newExtra.trim() && extracurriculars.length < MAX_EXTRAS) { setExtracurriculars(prev => [...prev, newExtra.trim()]); setNewExtra(""); }
@@ -60,7 +74,6 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
 
   const handleSave = async () => {
     setSaving(true);
-    // Geocode address
     let lat = profile.lat;
     let lon = profile.lon;
     if (address !== profile.address || city !== profile.city || state !== profile.state || zipcode !== profile.zipcode) {
@@ -72,7 +85,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
     users[email].profile = {
       major, gpa, sat, act, gradYear,
       aps: selectedAps, apScores,
-      clubs: selectedClubs,
+      clubs: selectedClubs, clubRoles,
       extracurriculars, achievements,
       serviceHours, isST, testOptional,
       sports: selectedSports,
@@ -124,9 +137,6 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
         {isST && (
           <div className="bg-secondary/20 border-l-4 border-secondary rounded-r-lg p-3 mb-4 text-xs">
             ⚠️ S/T requires math every year through Pre-Calc Honors+, and 3-4 advanced STEM credits with at least one AP.
-            {gradYear === "2026" && (
-              <p className="mt-2 font-bold text-destructive">🔔 Seniors doing Option 3 (Dual Enrollment): Remember to complete your required dual enrollment classes!</p>
-            )}
           </div>
         )}
 
@@ -136,7 +146,6 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           {GRAD_YEARS.map(y => <option key={y} value={y}>Class of {y}</option>)}
         </select>
 
-        {/* Address Section */}
         <div className="bg-muted/30 rounded-lg p-3 mb-3 border border-input">
           <label className="text-sm font-semibold text-foreground block mb-2">📍 Home Address (for college distance)</label>
           <Input placeholder="Street Address" value={address} onChange={e => setAddress(e.target.value)} className="mb-2" />
@@ -192,13 +201,13 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           </div>
         )}
 
-        <label className="text-sm font-semibold">Student Service Hours (24 required)</label>
+        <label className="text-sm font-semibold">Student Service Hours (75 required)</label>
         <div className="mb-3">
           <Input type="number" min="0" max="500" value={serviceHours} onChange={e => setServiceHours(Number(e.target.value))} />
           <div className="mt-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (serviceHours / 24) * 100)}%` }} />
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (serviceHours / 75) * 100)}%` }} />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{serviceHours}/24 hours completed</p>
+          <p className="text-xs text-muted-foreground mt-1">{serviceHours}/75 hours completed</p>
         </div>
 
         <label className="text-sm font-semibold">APs Taken / Taking</label>
@@ -231,12 +240,23 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
 
         <label className="text-sm font-semibold">Clubs & Organizations</label>
         <Input placeholder="Search clubs..." value={clubSearch} onChange={e => setClubSearch(e.target.value)} className="mb-2 mt-1" />
-        <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+        <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-2 bg-muted/30">
           {filteredClubs.map(club => (
-            <label key={club} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
-              {club}
-            </label>
+            <div key={club} className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer flex-1">
+                <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
+                <span className="truncate">{club}</span>
+              </label>
+              {selectedClubs.includes(club) && (
+                <select
+                  value={clubRoles.find(cr => cr.club === club)?.role || "Member"}
+                  onChange={e => setClubRole(club, e.target.value as ClubRole["role"])}
+                  className="w-28 p-1 border border-input rounded bg-card text-xs"
+                >
+                  {CLUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              )}
+            </div>
           ))}
         </div>
         <p className="text-xs text-muted-foreground mb-4">{selectedClubs.length} club(s) selected</p>
@@ -285,7 +305,6 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           </div>
         )}
 
-        {/* Vibe Quiz */}
         <Button variant="outline" onClick={() => setShowVibeQuiz(true)} className="w-full mt-2 mb-2">
           🎯 Update College Vibe Quiz ({Object.keys(profile.vibeAnswers || {}).length}/{VIBE_POLL_QUESTIONS.length} answered)
         </Button>

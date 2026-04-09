@@ -16,6 +16,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [customMaxCost, setCustomMaxCost] = useState("");
   const [tuitionType, setTuitionType] = useState<"out_of_state" | "in_state">("out_of_state");
   const [stateFilter, setStateFilter] = useState("all");
+  const [tierFilter, setTierFilter] = useState("all");
+  const [collegeSearch, setCollegeSearch] = useState("");
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [careers, setCareers] = useState<CareerMatch[]>([]);
@@ -27,42 +29,44 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     setBookmarks(users[email]?.bookmarks || []);
   }, [email]);
 
-  // Career matches based ONLY on user's selected profile choices
   useEffect(() => {
     setCareers(getCareerMatches(
       profile.major, profile.aps,
       profile.clubs || [], profile.sports || [],
-      profile.isST, profile.extracurriculars || []
+      profile.isST, profile.extracurriculars || [],
+      profile.gpa, profile.achievements || []
     ));
-  }, [profile.major, profile.aps, profile.clubs, profile.sports, profile.isST, profile.extracurriculars]);
+  }, [profile.major, profile.aps, profile.clubs, profile.sports, profile.isST, profile.extracurriculars, profile.gpa, profile.achievements]);
 
   useEffect(() => {
     if (tab === "colleges" || tab === "bookmarks") {
       setLoading(true);
       const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter };
+      const filters: SearchFilters = { distance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter, tierFilter, searchQuery: collegeSearch };
       searchColleges(
         profile.major, filters, email, profile.gpa, profile.aps,
         profile.clubs || [], profile.sat || "", profile.act || "",
         profile.extracurriculars || [], profile.sports || [],
         profile.vibeAnswers || {},
-        profile.lat, profile.lon
+        profile.lat, profile.lon,
+        profile.testOptional
       )
         .then(setColleges)
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
-  }, [profile, distance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, email]);
+  }, [profile, distance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, tierFilter, collegeSearch, email]);
 
   const distanceLabel = profile.lat && profile.lon ? "from your address" : "from ERHS";
 
   const toggleBookmark = (collegeId: string) => {
     const users = getUsers();
     if (!users[email].bookmarks) users[email].bookmarks = [];
-    if (users[email].bookmarks.includes(collegeId)) {
-      users[email].bookmarks = users[email].bookmarks.filter((b: string) => b !== collegeId);
+    const cid = String(collegeId);
+    if (users[email].bookmarks.includes(cid)) {
+      users[email].bookmarks = users[email].bookmarks.filter((b: string) => b !== cid);
     } else {
-      users[email].bookmarks.push(collegeId);
+      users[email].bookmarks.push(cid);
     }
     saveUsers(users);
     setBookmarks([...users[email].bookmarks]);
@@ -75,7 +79,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   };
 
   const displayColleges = tab === "bookmarks"
-    ? colleges.filter(c => bookmarks.includes(c.id))
+    ? colleges.filter(c => bookmarks.includes(String(c.id)))
     : colleges;
 
   const renderCollegeCard = (c: CollegeResult, i: number) => (
@@ -101,7 +105,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         </div>
         <div className="flex flex-col gap-2 items-end shrink-0">
           <button onClick={() => toggleBookmark(c.id)} className="text-2xl" title="Bookmark">
-            {bookmarks.includes(c.id) ? "⭐" : "☆"}
+            {bookmarks.includes(String(c.id)) ? "⭐" : "☆"}
           </button>
           <a href={c.url} target="_blank" rel="noopener noreferrer"
             className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity text-sm whitespace-nowrap">
@@ -123,9 +127,32 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance:</b> {c.miles.toFixed(1)} miles {distanceLabel}</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
+          {profile.testOptional && <p className="text-xs text-secondary font-semibold">📝 Classified as test-optional student — SAT not weighted in tier calculation</p>}
+          
+          {/* Demographics */}
+          {c.demographics && (
+            <div className="mt-2">
+              <p className="font-semibold mb-1">🏫 Student Demographics:</p>
+              <div className="flex gap-1 h-4 rounded-full overflow-hidden mb-1">
+                {c.demographics.white > 0 && <div className="bg-blue-400" style={{ width: `${c.demographics.white}%` }} title={`White: ${c.demographics.white}%`} />}
+                {c.demographics.black > 0 && <div className="bg-purple-500" style={{ width: `${c.demographics.black}%` }} title={`Black: ${c.demographics.black}%`} />}
+                {c.demographics.hispanic > 0 && <div className="bg-orange-400" style={{ width: `${c.demographics.hispanic}%` }} title={`Hispanic: ${c.demographics.hispanic}%`} />}
+                {c.demographics.asian > 0 && <div className="bg-green-400" style={{ width: `${c.demographics.asian}%` }} title={`Asian: ${c.demographics.asian}%`} />}
+                {c.demographics.other > 0 && <div className="bg-gray-400" style={{ width: `${c.demographics.other}%` }} title={`Other: ${c.demographics.other}%`} />}
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <span>🔵 White: {c.demographics.white}%</span>
+                <span>🟣 Black: {c.demographics.black}%</span>
+                <span>🟠 Hispanic: {c.demographics.hispanic}%</span>
+                <span>🟢 Asian: {c.demographics.asian}%</span>
+                <span>⚪ Other: {c.demographics.other}%</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " virtual tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
+            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>
@@ -154,6 +181,14 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   💡 Add your home address in <b>Portfolio</b> for accurate distance calculations from your location.
                 </div>
               )}
+              
+              {/* College Search */}
+              <div>
+                <label className="text-sm font-semibold text-foreground">🔍 Search College by Name</label>
+                <Input placeholder="e.g. University of Maryland" value={collegeSearch}
+                  onChange={e => setCollegeSearch(e.target.value)} className="mt-1" />
+              </div>
+
               <div>
                 <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
                 <input type="range" min="0" max="3000" step="25" value={distance}
@@ -164,7 +199,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   <span>3000 mi</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -210,6 +245,17 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="out_of_state">Out-of-State Only</option>
                   </select>
                 </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">School Tier</label>
+                  <select value={tierFilter} onChange={e => setTierFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All Tiers</option>
+                    <option value="safety_target">Safety & Target Only</option>
+                    <option value="safety">Safety Only</option>
+                    <option value="target">Target Only</option>
+                    <option value="reach">Reach Only</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -229,7 +275,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         <div>
           <p className="text-sm text-muted-foreground mb-6">
             Based on your interest in <b>{profile.major || "your selected field"}</b>, your {profile.aps.length} AP courses,
-            {profile.clubs?.length || 0} clubs, {profile.sports?.length || 0} sports, {profile.extracurriculars?.length || 0} extracurriculars
+            {" "}{profile.clubs?.length || 0} clubs, {profile.sports?.length || 0} sports, {profile.extracurriculars?.length || 0} extracurriculars
             {profile.isST ? ", and S/T program" : ""}
           </p>
           {careers.length === 0 ? (
@@ -238,9 +284,10 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             careers.map((c, i) => (
               <div key={i} className="bg-card rounded-xl shadow-md p-5 mb-4 border-l-8 border-secondary">
                 <div className="flex justify-between items-start flex-wrap gap-2">
-                  <div>
+                  <div className="flex-1">
                     <h4 className="text-lg font-bold text-primary">{c.title}</h4>
                     <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
+                    <p className="text-xs text-primary/80 mt-2 italic">💡 {c.whyForYou}</p>
                     {c.relatedClubs.length > 0 && (
                       <p className="text-xs text-muted-foreground mt-2">
                         <b>Your Related Clubs:</b> {c.relatedClubs.join(", ")}

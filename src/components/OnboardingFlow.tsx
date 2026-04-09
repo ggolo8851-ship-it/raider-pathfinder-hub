@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS } from "@/lib/store";
 import { geocodeAddress } from "@/lib/college-api";
 import VibePollQuiz from "@/components/VibePollQuiz";
 
@@ -30,7 +30,6 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [isST, setIsST] = useState(false);
   const [testOptional, setTestOptional] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
-  // Address fields
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("MD");
@@ -51,22 +50,18 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   };
 
   const handlePollsComplete = async (vibeAnswers: Record<string, string>) => {
-    // Geocode address
     let lat: number | undefined;
     let lon: number | undefined;
     if (address || zipcode) {
       const coords = await geocodeAddress(address, city, state, zipcode);
-      if (coords) {
-        lat = coords.lat;
-        lon = coords.lon;
-      }
+      if (coords) { lat = coords.lat; lon = coords.lon; }
     }
 
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
       aps: selectedAps, apScores: {},
-      clubs: selectedClubs,
+      clubs: selectedClubs, clubRoles: [],
       extracurriculars, achievements,
       serviceHours: 0, isST, testOptional,
       sports: selectedSports,
@@ -90,7 +85,7 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     return (
       <div className="auth-bg min-h-screen flex items-center justify-center p-5">
         <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-2xl">
-          <h2 className="text-2xl font-bold text-primary mb-6 text-center">MD Graduation Requirements</h2>
+          <h2 className="text-2xl font-bold text-primary mb-6 text-center">Maryland High School Graduation Requirements</h2>
           <table className="w-full mb-6">
             <thead>
               <tr className="border-b-2 border-primary">
@@ -99,10 +94,10 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
               </tr>
             </thead>
             <tbody>
-              {[["English", "4"], ["Math", "4"], ["Science", "3"], ["Social Studies", "3"], ["Student Service Hours", "24 Hrs"]].map(([s, c]) => (
-                <tr key={s} className="border-b border-border">
-                  <td className="py-3">{s}</td>
-                  <td className="py-3 font-semibold">{c}</td>
+              {MD_GRADUATION_REQUIREMENTS.map(r => (
+                <tr key={r.subject} className={`border-b border-border ${r.subject === "Total Credits Required" ? "font-bold bg-muted/30" : ""}`}>
+                  <td className="py-2.5 text-sm">{r.subject}</td>
+                  <td className="py-2.5 font-semibold text-sm">{r.credits}</td>
                 </tr>
               ))}
             </tbody>
@@ -126,9 +121,6 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
           {isST && (
             <div className="bg-secondary/20 border-l-4 border-secondary rounded-r-lg p-3 mb-4 text-xs text-foreground">
               ⚠️ S/T students must take math every year through Pre-Calculus Honors or higher, and need 3-4 advanced STEM credits including at least one AP.
-              {gradYear === "2026" && (
-                <p className="mt-2 font-bold text-destructive">🔔 Seniors doing Option 3 (Dual Enrollment): Remember to complete your required dual enrollment classes!</p>
-              )}
             </div>
           )}
 
@@ -138,7 +130,6 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
             {GRAD_YEARS.map(y => <option key={y} value={y}>Class of {y}</option>)}
           </select>
 
-          {/* Address Section */}
           <div className="bg-muted/30 rounded-lg p-3 mb-3 border border-input">
             <label className="text-sm font-semibold text-foreground block mb-2">📍 Your Home Address (for college distance)</label>
             <Input placeholder="Street Address" value={address} onChange={e => setAddress(e.target.value)} className="mb-2" />
@@ -295,7 +286,6 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     );
   }
 
-  // Polls step
   return (
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
