@@ -8,9 +8,38 @@ interface MatchesPageProps {
   email: string;
 }
 
+// Map popular schools to specific YouTube campus tour video IDs
+const VIRTUAL_TOUR_VIDEOS: Record<string, string> = {
+  "University of Maryland-College Park": "cGRagHboczY",
+  "Howard University": "4eZaP7JOXiI",
+  "Georgetown University": "f6YrMEb3VUo",
+  "George Washington University": "J5RYmnPBOEE",
+  "Johns Hopkins University": "kxBx_VH1RBA",
+  "University of Virginia-Main Campus": "8vg2I8bCFOk",
+  "Morgan State University": "YpJT5Y5TDmg",
+  "Bowie State University": "rBwL_b04mvs",
+  "Towson University": "6kkF1WqXDQk",
+  "Salisbury University": "dUVP2mnAknU",
+  "University of Baltimore": "oBPQbL12xas",
+  "American University": "8pQgLfChlcw",
+  "Catholic University of America": "aJj4yMaGdwY",
+  "Frostburg State University": "3KxAZ1uu0CM",
+  "St. Mary's College of Maryland": "RGa2fCB-DVk",
+  "Coppin State University": "NvqR3H0KMIE",
+  "University of Maryland-Baltimore County": "o-YGDuFT5WU",
+  "Loyola University Maryland": "xJHk7Tdjqxk",
+};
+
+const getVirtualTourUrl = (name: string): string => {
+  const videoId = VIRTUAL_TOUR_VIDEOS[name];
+  if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + " official campus tour")}`;
+};
+
 const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [tab, setTab] = useState<"colleges" | "careers" | "bookmarks">("colleges");
   const [distance, setDistance] = useState(0);
+  const [minDistance, setMinDistance] = useState(0);
   const [sizeFilter, setSizeFilter] = useState("all");
   const [maxCost, setMaxCost] = useState(0);
   const [customMaxCost, setCustomMaxCost] = useState("");
@@ -23,6 +52,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [careers, setCareers] = useState<CareerMatch[]>([]);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
+  const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
 
   useEffect(() => {
     const users = getUsers();
@@ -34,28 +64,30 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       profile.major, profile.aps,
       profile.clubs || [], profile.sports || [],
       profile.isST, profile.extracurriculars || [],
-      profile.gpa, profile.achievements || []
+      profile.gpa, profile.achievements || [],
+      profile.interests || []
     ));
-  }, [profile.major, profile.aps, profile.clubs, profile.sports, profile.isST, profile.extracurriculars, profile.gpa, profile.achievements]);
+  }, [profile]);
 
   useEffect(() => {
     if (tab === "colleges" || tab === "bookmarks") {
       setLoading(true);
       const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter, tierFilter, searchQuery: collegeSearch };
+      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter, tierFilter, searchQuery: collegeSearch };
       searchColleges(
         profile.major, filters, email, profile.gpa, profile.aps,
         profile.clubs || [], profile.sat || "", profile.act || "",
         profile.extracurriculars || [], profile.sports || [],
         profile.vibeAnswers || {},
         profile.lat, profile.lon,
-        profile.testOptional
+        profile.testOptional,
+        profile.interests || []
       )
         .then(setColleges)
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
-  }, [profile, distance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, tierFilter, collegeSearch, email]);
+  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, tierFilter, collegeSearch, email]);
 
   const distanceLabel = profile.lat && profile.lon ? "from your address" : "from ERHS";
 
@@ -75,7 +107,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const tierColors: Record<string, string> = {
     "Safety": "bg-green-100 text-green-800",
     "Target": "bg-secondary/20 text-secondary-foreground",
-    "Reach": "bg-red-100 text-red-800",
+    "Possible Reach": "bg-orange-100 text-orange-800",
+    "Far Reach": "bg-red-100 text-red-800",
   };
 
   const displayColleges = tab === "bookmarks"
@@ -129,7 +162,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
           {profile.testOptional && <p className="text-xs text-secondary font-semibold">📝 Classified as test-optional student — SAT not weighted in tier calculation</p>}
           
-          {/* Demographics */}
           {c.demographics && (
             <div className="mt-2">
               <p className="font-semibold mb-1">🏫 Student Demographics:</p>
@@ -152,7 +184,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
+            <a href={getVirtualTourUrl(c.name)} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>
@@ -182,23 +214,33 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               )}
               
-              {/* College Search */}
               <div>
                 <label className="text-sm font-semibold text-foreground">🔍 Search College by Name</label>
                 <Input placeholder="e.g. University of Maryland" value={collegeSearch}
                   onChange={e => setCollegeSearch(e.target.value)} className="mt-1" />
               </div>
 
-              <div>
-                <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
-                <input type="range" min="0" max="3000" step="25" value={distance}
-                  onChange={e => setDistance(Number(e.target.value))}
-                  className="w-full mt-2 accent-primary" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>No Limit</span>
-                  <span>3000 mi</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
+                  <input type="range" min="0" max="3000" step="25" value={distance}
+                    onChange={e => setDistance(Number(e.target.value))}
+                    className="w-full mt-2 accent-primary" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>No Limit</span><span>3000 mi</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Min Distance: {minDistance === 0 ? "None" : `${minDistance} miles`}</label>
+                  <input type="range" min="0" max="500" step="10" value={minDistance}
+                    onChange={e => setMinDistance(Number(e.target.value))}
+                    className="w-full mt-2 accent-primary" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>None</span><span>500 mi</span>
+                  </div>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
@@ -253,7 +295,9 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="safety_target">Safety & Target Only</option>
                     <option value="safety">Safety Only</option>
                     <option value="target">Target Only</option>
-                    <option value="reach">Reach Only</option>
+                    <option value="possible_reach">Possible Reach Only</option>
+                    <option value="far_reach">Far Reach Only</option>
+                    <option value="reach">All Reach Schools</option>
                   </select>
                 </div>
               </div>
@@ -263,10 +307,13 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <p className="text-muted-foreground text-center py-8">Scanning college databases...</p>
           ) : displayColleges.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              {tab === "bookmarks" ? "No bookmarked colleges yet. Star colleges to save them!" : "No schools found. Try adjusting your filters."}
+              {tab === "bookmarks" ? "No bookmarked colleges yet. Star colleges to save them!" : "No schools found matching your filters. Try adjusting your criteria."}
             </p>
           ) : (
-            displayColleges.map((c, i) => renderCollegeCard(c, i))
+            <>
+              <p className="text-sm text-muted-foreground mb-4">{displayColleges.length} college{displayColleges.length !== 1 ? "s" : ""} found — sorted by fit percentage (highest first)</p>
+              {displayColleges.map((c, i) => renderCollegeCard(c, i))}
+            </>
           )}
         </>
       )}
@@ -276,33 +323,48 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p className="text-sm text-muted-foreground mb-6">
             Based on your interest in <b>{profile.major || "your selected field"}</b>, your {profile.aps.length} AP courses,
             {" "}{profile.clubs?.length || 0} clubs, {profile.sports?.length || 0} sports, {profile.extracurriculars?.length || 0} extracurriculars
+            {profile.interests && profile.interests.length > 0 ? `, ${profile.interests.length} interests` : ""}
             {profile.isST ? ", and S/T program" : ""}
           </p>
           {careers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Update your profile with a major, clubs, or activities to see career matches.</p>
+            <p className="text-muted-foreground text-center py-8">Update your profile with a major, interests, or activities to see career matches.</p>
           ) : (
-            careers.map((c, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-md p-5 mb-4 border-l-8 border-secondary">
-                <div className="flex justify-between items-start flex-wrap gap-2">
-                  <div className="flex-1">
-                    <h4 className="text-lg font-bold text-primary">{c.title}</h4>
-                    <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
-                    <p className="text-xs text-primary/80 mt-2 italic">💡 {c.whyForYou}</p>
-                    {c.relatedClubs.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        <b>Your Related Clubs:</b> {c.relatedClubs.join(", ")}
-                      </p>
-                    )}
+            <>
+              <p className="text-sm text-muted-foreground mb-4">{careers.length} career{careers.length !== 1 ? "s" : ""} matched to your profile</p>
+              {careers.map((c, i) => (
+                <div key={i} className="bg-card rounded-xl shadow-md p-5 mb-4 border-l-8 border-secondary">
+                  <div className="flex justify-between items-start flex-wrap gap-2">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-bold text-primary">{c.title}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
+                      <p className="text-xs text-primary/80 mt-2 italic">💡 {c.whyForYou}</p>
+                      {c.relatedClubs.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          <b>Your Related Clubs:</b> {c.relatedClubs.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-secondary">{c.salaryRange}</p>
+                      <p className="text-xs text-muted-foreground">{c.growth}</p>
+                      <a href={c.searchLink} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-primary underline mt-1 inline-block">Search on Indeed ↗</a>
+                      <button onClick={() => setExpandedCareer(expandedCareer === c.title ? null : c.title)}
+                        className="text-xs text-primary underline mt-1 block">
+                        {expandedCareer === c.title ? "Less Info" : "More Info"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-secondary">{c.salaryRange}</p>
-                    <p className="text-xs text-muted-foreground">{c.growth}</p>
-                    <a href={c.searchLink} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-primary underline mt-1 inline-block">Search Jobs ↗</a>
-                  </div>
+                  {expandedCareer === c.title && (
+                    <div className="mt-3 pt-3 border-t border-border text-sm space-y-2">
+                      <p><b>🔧 Expected Skills:</b> {c.skills.join(", ")}</p>
+                      <p><b>🏢 Work Type:</b> {c.workType}</p>
+                      <p><b>📋 Conditions:</b> {c.conditions}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              ))}
+            </>
           )}
         </div>
       )}

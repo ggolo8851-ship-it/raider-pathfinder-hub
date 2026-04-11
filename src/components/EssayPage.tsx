@@ -40,16 +40,19 @@ const ESSAY_RESOURCES = [
   { name: "College Essay Guy (Free Resources)", url: "https://www.collegeessayguy.com/", desc: "Free essay guides, brainstorming exercises, and examples" },
   { name: "Khan Academy - College Admissions", url: "https://www.khanacademy.org/college-careers-more/college-admissions", desc: "Free college application course" },
   { name: "Purdue OWL Writing Lab", url: "https://owl.purdue.edu/", desc: "Grammar, citation, and writing help" },
-  { name: "Grammarly", url: "https://www.grammarly.com/", desc: "Free grammar and spell checker" },
+  { name: "LanguageTool", url: "https://languagetool.org/", desc: "Free open-source grammar & spell checker" },
+  { name: "Hemingway Editor", url: "https://hemingwayapp.com/", desc: "Readability and clarity checker — free online" },
 ];
 
-// Enhanced grammar/style analysis patterns
 const GRAMMAR_ISSUES = [
   { pattern: /\b(their|there|they're)\b/gi, name: "their/there/they're", tip: "Double-check their/there/they're usage" },
   { pattern: /\b(your|you're)\b/gi, name: "your/you're", tip: "Make sure you're using your/you're correctly" },
   { pattern: /\b(its|it's)\b/gi, name: "its/it's", tip: "Check its/it's — 'it's' = 'it is', 'its' = possessive" },
   { pattern: /\b(affect|effect)\b/gi, name: "affect/effect", tip: "Verify affect (verb) vs. effect (noun) usage" },
   { pattern: /\b(then|than)\b/gi, name: "then/than", tip: "Check then (time) vs. than (comparison)" },
+  { pattern: /\b(to|too|two)\b/gi, name: "to/too/two", tip: "Verify to/too/two — 'too' = also/excessive" },
+  { pattern: /\b(lose|loose)\b/gi, name: "lose/loose", tip: "Lose = fail to keep, Loose = not tight" },
+  { pattern: /\b(accept|except)\b/gi, name: "accept/except", tip: "Accept = receive, Except = excluding" },
 ];
 
 const WEAK_PHRASES = [
@@ -70,18 +73,19 @@ const EssayPage = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "warning" | "error" | "info"; text: string }[]>([]);
   const [wordCount, setWordCount] = useState(0);
   const [activeTab, setActiveTab] = useState<"write" | "prompts" | "tips" | "resources">("write");
-  const [readabilityScore, setReadabilityScore] = useState<number | null>(null);
+  const [essayScore, setEssayScore] = useState<number | null>(null);
 
   const analyzeEssay = () => {
     const words = essay.trim().split(/\s+/).filter(Boolean);
     const wc = words.length;
     setWordCount(wc);
     const fb: { type: "success" | "warning" | "error" | "info"; text: string }[] = [];
+    let score = 100; // Start at 100 and deduct for issues
 
     // Word count
-    if (wc < 150) fb.push({ type: "error", text: "⚠️ Your essay is very short. Most college essays should be 250-650 words." });
-    else if (wc < 250) fb.push({ type: "warning", text: "📏 Your essay is under the typical 250-word minimum. Consider expanding." });
-    else if (wc > 650) fb.push({ type: "warning", text: "📏 Your essay exceeds the Common App 650-word limit. Consider trimming." });
+    if (wc < 150) { fb.push({ type: "error", text: "⚠️ Your essay is very short. Most college essays should be 250-650 words." }); score -= 20; }
+    else if (wc < 250) { fb.push({ type: "warning", text: "📏 Your essay is under the typical 250-word minimum. Consider expanding." }); score -= 10; }
+    else if (wc > 650) { fb.push({ type: "warning", text: "📏 Your essay exceeds the Common App 650-word limit. Consider trimming." }); score -= 5; }
     else fb.push({ type: "success", text: `✅ Word count (${wc}) is within the 250-650 word range.` });
 
     // Opening analysis
@@ -89,6 +93,7 @@ const EssayPage = () => {
     const clicheOpeners = CLICHES.filter(c => firstSentence.includes(c));
     if (clicheOpeners.length > 0) {
       fb.push({ type: "error", text: `🚫 Your opening uses a cliché: "${clicheOpeners[0]}". Start with action, dialogue, or a vivid moment instead.` });
+      score -= 10;
     } else if (firstSentence.length > 10) {
       fb.push({ type: "success", text: "✅ Your opening avoids common clichés." });
     }
@@ -98,8 +103,10 @@ const EssayPage = () => {
     const foundVague = vagueWords.filter(w => essay.toLowerCase().includes(w));
     if (foundVague.length >= 4) {
       fb.push({ type: "error", text: `🔍 Too many vague words: ${foundVague.slice(0, 5).join(", ")}. Replace with specific, descriptive language.` });
+      score -= 10;
     } else if (foundVague.length >= 2) {
       fb.push({ type: "warning", text: `📝 Consider replacing vague words: ${foundVague.join(", ")}` });
+      score -= 5;
     } else {
       fb.push({ type: "success", text: "✅ Good use of specific language." });
     }
@@ -109,20 +116,21 @@ const EssayPage = () => {
     const startsWithI = sentences.filter(s => s.trim().toLowerCase().startsWith("i ")).length;
     if (sentences.length > 3 && startsWithI / sentences.length > 0.5) {
       fb.push({ type: "warning", text: `💡 ${startsWithI} of ${sentences.length} sentences start with "I". Vary your sentence structure.` });
+      score -= 5;
     }
 
     // Sentence length variety
     const sentLengths = sentences.map(s => s.trim().split(/\s+/).length);
-    const avgLen = sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length;
+    const avgLen = sentLengths.length > 0 ? sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length : 0;
     const longSentences = sentLengths.filter(l => l > 35).length;
-    const shortSentences = sentLengths.filter(l => l < 5 && l > 0).length;
-    if (longSentences > 2) fb.push({ type: "warning", text: `📝 ${longSentences} sentences are over 35 words. Break them up for clarity.` });
+    if (longSentences > 2) { fb.push({ type: "warning", text: `📝 ${longSentences} sentences are over 35 words. Break them up for clarity.` }); score -= 3; }
     if (avgLen > 0) fb.push({ type: "info", text: `📊 Average sentence length: ${avgLen.toFixed(0)} words` });
 
     // Paragraph structure
     const paragraphs = essay.split(/\n\n+/).filter(p => p.trim().length > 0);
     if (paragraphs.length < 3 && wc > 200) {
       fb.push({ type: "warning", text: "📝 Break your essay into more paragraphs (intro, body, conclusion)." });
+      score -= 5;
     } else if (paragraphs.length >= 3) {
       fb.push({ type: "success", text: `✅ Good paragraph structure (${paragraphs.length} paragraphs).` });
     }
@@ -131,19 +139,23 @@ const EssayPage = () => {
     const foundWeak = WEAK_PHRASES.filter(p => essay.toLowerCase().includes(p));
     if (foundWeak.length > 0) {
       fb.push({ type: "warning", text: `💡 Weak phrases detected: "${foundWeak.slice(0, 3).join('", "')}". These weaken your voice — try removing them.` });
+      score -= Math.min(foundWeak.length * 2, 8);
     }
 
     // Clichés throughout
     const foundCliches = CLICHES.filter(c => essay.toLowerCase().includes(c));
     if (foundCliches.length > 1) {
       fb.push({ type: "error", text: `🚫 Multiple clichés found: "${foundCliches.slice(0, 3).join('", "')}". Replace with original language.` });
+      score -= foundCliches.length * 3;
     }
 
     // Grammar checks
     const essayLower = essay.toLowerCase();
+    let grammarHits = 0;
     GRAMMAR_ISSUES.forEach(g => {
       if (g.pattern.test(essayLower)) {
         fb.push({ type: "info", text: `📝 Grammar check: ${g.tip}` });
+        grammarHits++;
       }
     });
 
@@ -152,6 +164,7 @@ const EssayPage = () => {
     const passiveMatches = essay.match(passivePatterns) || [];
     if (passiveMatches.length > 3) {
       fb.push({ type: "warning", text: `💡 ${passiveMatches.length} instances of passive voice detected. Use active voice for stronger writing.` });
+      score -= Math.min(passiveMatches.length, 5);
     }
 
     // Repetition detection
@@ -163,11 +176,22 @@ const EssayPage = () => {
     const repeated = Object.entries(wordFreq).filter(([_, count]) => count > 4).sort((a, b) => b[1] - a[1]);
     if (repeated.length > 0) {
       fb.push({ type: "warning", text: `🔄 Repeated words: ${repeated.slice(0, 3).map(([w, c]) => `"${w}" (${c}x)`).join(", ")}. Try using synonyms.` });
+      score -= Math.min(repeated.length * 2, 6);
     }
 
     // Double spaces
     const doubleSpaces = (essay.match(/  +/g) || []).length;
-    if (doubleSpaces > 2) fb.push({ type: "info", text: `📝 ${doubleSpaces} extra spaces found — clean up before submitting.` });
+    if (doubleSpaces > 2) { fb.push({ type: "info", text: `📝 ${doubleSpaces} extra spaces found — clean up before submitting.` }); score -= 1; }
+
+    // Capitalization check
+    const uncapitalized = sentences.filter(s => {
+      const trimmed = s.trim();
+      return trimmed.length > 0 && trimmed[0] !== trimmed[0].toUpperCase() && /[a-z]/.test(trimmed[0]);
+    });
+    if (uncapitalized.length > 0) {
+      fb.push({ type: "info", text: `📝 ${uncapitalized.length} sentence(s) may not start with a capital letter.` });
+      score -= 2;
+    }
 
     // Readability score (simplified Flesch-Kincaid)
     const syllableCount = words.reduce((total, word) => {
@@ -178,20 +202,24 @@ const EssayPage = () => {
     if (sentences.length > 0 && words.length > 0) {
       const fk = 0.39 * (words.length / sentences.length) + 11.8 * (syllableCount / words.length) - 15.59;
       const grade = Math.max(1, Math.min(16, Math.round(fk)));
-      setReadabilityScore(grade);
       if (grade >= 12) fb.push({ type: "success", text: `📚 Reading level: College-level (Grade ${grade}). Appropriate for admissions.` });
-      else if (grade >= 9) fb.push({ type: "info", text: `📚 Reading level: Grade ${grade}. Consider more sophisticated vocabulary.` });
-      else fb.push({ type: "warning", text: `📚 Reading level: Grade ${grade}. Try using more advanced vocabulary and complex sentences.` });
+      else if (grade >= 9) { fb.push({ type: "info", text: `📚 Reading level: Grade ${grade}. Consider more sophisticated vocabulary.` }); score -= 3; }
+      else { fb.push({ type: "warning", text: `📚 Reading level: Grade ${grade}. Try using more advanced vocabulary and complex sentences.` }); score -= 8; }
     }
 
+    // Clamp score
+    score = Math.max(0, Math.min(100, score));
+    setEssayScore(score);
+
     // Overall assessment
-    const errors = fb.filter(f => f.type === "error").length;
-    const warnings = fb.filter(f => f.type === "warning").length;
-    const successes = fb.filter(f => f.type === "success").length;
-    if (errors === 0 && warnings <= 1 && wc >= 250) {
-      fb.unshift({ type: "success", text: "🌟 Strong essay! Focus on making your unique voice shine and consider having someone else review it." });
-    } else if (errors > 2) {
-      fb.unshift({ type: "error", text: "⚠️ Several issues found. Address the red items first for the biggest improvement." });
+    if (score >= 85) {
+      fb.unshift({ type: "success", text: `🌟 Score: ${score}/100 — Strong essay! Focus on making your unique voice shine.` });
+    } else if (score >= 70) {
+      fb.unshift({ type: "info", text: `📊 Score: ${score}/100 — Good foundation. Address the highlighted items for improvement.` });
+    } else if (score >= 50) {
+      fb.unshift({ type: "warning", text: `📊 Score: ${score}/100 — Needs work. Focus on the red and yellow items first.` });
+    } else {
+      fb.unshift({ type: "error", text: `⚠️ Score: ${score}/100 — Significant revision needed. Address the major issues below.` });
     }
 
     setFeedback(fb);
@@ -201,6 +229,7 @@ const EssayPage = () => {
     setEssay(text);
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
     if (feedback.length > 0) setFeedback([]);
+    setEssayScore(null);
   };
 
   const typeColors = {
@@ -213,7 +242,7 @@ const EssayPage = () => {
   return (
     <div className="max-w-4xl mx-auto py-10 px-5">
       <h2 className="text-3xl font-bold text-primary mb-2">📝 Essay Resource Center</h2>
-      <p className="text-muted-foreground mb-6">Write, review, and strengthen your college essays with AI-style feedback</p>
+      <p className="text-muted-foreground mb-6">Write, review, and strengthen your college essays with detailed feedback</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {(["write", "prompts", "tips", "resources"] as const).map(t => (
@@ -221,7 +250,7 @@ const EssayPage = () => {
             className={`px-5 py-2 rounded-lg font-semibold transition-colors ${
               activeTab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}>
-            {t === "write" ? "✍️ Write & Review" : t === "prompts" ? "📋 Prompts" : t === "tips" ? "💡 Tips" : "📚 Resources"}
+            {t === "write" ? "✍️ Write & Grade" : t === "prompts" ? "📋 Prompts" : t === "tips" ? "💡 Tips" : "📚 Resources"}
           </button>
         ))}
       </div>
@@ -232,8 +261,13 @@ const EssayPage = () => {
             <div className="flex justify-between items-center mb-3">
               <label className="text-sm font-semibold text-foreground">Paste or write your essay below</label>
               <div className="flex items-center gap-3">
-                {readabilityScore !== null && (
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full">Grade {readabilityScore}</span>
+                {essayScore !== null && (
+                  <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                    essayScore >= 85 ? "bg-green-100 text-green-800" :
+                    essayScore >= 70 ? "bg-blue-100 text-blue-800" :
+                    essayScore >= 50 ? "bg-yellow-100 text-yellow-800" :
+                    "bg-red-100 text-red-800"
+                  }`}>{essayScore}/100</span>
                 )}
                 <span className={`text-xs font-bold ${wordCount > 650 ? "text-destructive" : wordCount >= 250 ? "text-green-600" : "text-muted-foreground"}`}>
                   {wordCount} / 650 words
@@ -251,10 +285,10 @@ const EssayPage = () => {
                 style={{ width: `${Math.min(100, (wordCount / 650) * 100)}%` }} />
             </div>
             <Button onClick={analyzeEssay} disabled={essay.trim().length < 50} className="w-full mt-3">
-              🔍 Analyze My Essay (Grammar, Style, Structure)
+              🔍 Grade My Essay (out of 100)
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Checks: word count, clichés, vague language, sentence variety, passive voice, grammar, readability level, repetition, structure
+              Checks: word count, clichés, vague language, sentence variety, passive voice, grammar, readability, repetition, structure, capitalization
             </p>
           </div>
 
@@ -276,9 +310,7 @@ const EssayPage = () => {
               <h3 className="text-lg font-bold text-primary mb-3">{section.title}</h3>
               <div className="space-y-2">
                 {section.prompts.map((p, j) => (
-                  <div key={j} className="p-3 bg-muted/30 rounded-lg text-sm text-foreground border-l-4 border-primary">
-                    {p}
-                  </div>
+                  <div key={j} className="p-3 bg-muted/30 rounded-lg text-sm text-foreground border-l-4 border-primary">{p}</div>
                 ))}
               </div>
             </div>

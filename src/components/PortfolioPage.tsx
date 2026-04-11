@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS, ClubRole } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS, ClubRole, SportRole } from "@/lib/store";
 import { generateResumePDF } from "@/lib/resume-builder";
 import { geocodeAddress } from "@/lib/college-api";
 import VibePollQuiz from "@/components/VibePollQuiz";
@@ -16,6 +16,7 @@ interface PortfolioPageProps {
 const MAX_EXTRAS = 15;
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 const CLUB_ROLES: ClubRole["role"][] = ["Member", "Management", "Founder"];
+const SPORT_ROLES: SportRole["role"][] = ["Player", "Captain", "Manager"];
 
 const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProps) => {
   const [major, setMajor] = useState(profile.major);
@@ -28,11 +29,14 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [selectedClubs, setSelectedClubs] = useState<string[]>(profile.clubs || []);
   const [clubRoles, setClubRoles] = useState<ClubRole[]>(profile.clubRoles || []);
   const [selectedSports, setSelectedSports] = useState<string[]>(profile.sports || []);
+  const [sportRoles, setSportRoles] = useState<SportRole[]>(profile.sportRoles || []);
   const [clubSearch, setClubSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>(profile.extracurriculars || []);
   const [newExtra, setNewExtra] = useState("");
   const [achievements, setAchievements] = useState<string[]>(profile.achievements || []);
   const [newAchievement, setNewAchievement] = useState("");
+  const [interests, setInterests] = useState<string[]>(profile.interests || []);
+  const [newInterest, setNewInterest] = useState("");
   const [serviceHours, setServiceHours] = useState(profile.serviceHours || 0);
   const [isST, setIsST] = useState(profile.isST || false);
   const [testOptional, setTestOptional] = useState(profile.testOptional || false);
@@ -55,10 +59,22 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
       return [...prev, club];
     });
   };
-  const toggleSport = (sport: string) => setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
+  const toggleSport = (sport: string) => {
+    setSelectedSports(prev => {
+      if (prev.includes(sport)) {
+        setSportRoles(r => r.filter(sr => sr.sport !== sport));
+        return prev.filter(s => s !== sport);
+      }
+      setSportRoles(r => [...r, { sport, role: "Player" }]);
+      return [...prev, sport];
+    });
+  };
 
   const setClubRole = (club: string, role: ClubRole["role"]) => {
     setClubRoles(prev => prev.map(cr => cr.club === club ? { ...cr, role } : cr));
+  };
+  const setSportRole = (sport: string, role: SportRole["role"]) => {
+    setSportRoles(prev => prev.map(sr => sr.sport === sport ? { ...sr, role } : sr));
   };
 
   const addExtra = () => {
@@ -67,7 +83,9 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const addAchievement = () => {
     if (newAchievement.trim()) { setAchievements(prev => [...prev, newAchievement.trim()]); setNewAchievement(""); }
   };
-
+  const addInterest = () => {
+    if (newInterest.trim() && interests.length < 10) { setInterests(prev => [...prev, newInterest.trim()]); setNewInterest(""); }
+  };
   const setApScore = (ap: string, score: number) => {
     setApScores(prev => ({ ...prev, [ap]: score }));
   };
@@ -88,7 +106,8 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
       clubs: selectedClubs, clubRoles,
       extracurriculars, achievements,
       serviceHours, isST, testOptional,
-      sports: selectedSports,
+      sports: selectedSports, sportRoles,
+      interests,
       address, city, state, zipcode,
       lat, lon,
       vibeAnswers: profile.vibeAnswers || {},
@@ -168,7 +187,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           {showExplore ? "Hide explorer" : "🔍 Undecided? Explore career paths"}
         </button>
         {showExplore && (
-          <div className="bg-muted/30 rounded-lg p-3 mb-3 space-y-2 max-h-48 overflow-y-auto">
+          <div className="bg-muted/30 rounded-lg p-3 mb-3 space-y-2 max-h-64 overflow-y-auto">
             {UNDECIDED_CAREER_EXPLORATIONS.map(c => (
               <button key={c.field} onClick={() => { setMajor(c.majors[0]); setShowExplore(false); }}
                 className="w-full text-left p-2 rounded hover:bg-muted transition-colors">
@@ -201,14 +220,33 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
           </div>
         )}
 
-        <label className="text-sm font-semibold">Student Service Hours (75 required)</label>
+        <label className="text-sm font-semibold">Student Service Learning Hours (24 required)</label>
         <div className="mb-3">
           <Input type="number" min="0" max="500" value={serviceHours} onChange={e => setServiceHours(Number(e.target.value))} />
           <div className="mt-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (serviceHours / 75) * 100)}%` }} />
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (serviceHours / 24) * 100)}%` }} />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{serviceHours}/75 hours completed</p>
+          <p className="text-xs text-muted-foreground mt-1">{serviceHours}/24 hours completed</p>
         </div>
+
+        {/* Interests & Talents */}
+        <label className="text-sm font-semibold">🎯 Interests & Talents ({interests.length}/10)</label>
+        <p className="text-xs text-muted-foreground mb-1">These help match you with better careers and colleges</p>
+        <div className="flex gap-2 mb-2 mt-1">
+          <Input placeholder="e.g. Coding, Photography, Public Speaking" value={newInterest} onChange={e => setNewInterest(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addInterest()} />
+          <Button onClick={addInterest} size="sm" disabled={interests.length >= 10}>Add</Button>
+        </div>
+        {interests.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {interests.map((int, i) => (
+              <span key={i} className="bg-secondary/20 text-secondary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                {int}
+                <button onClick={() => setInterests(prev => prev.filter((_, j) => j !== i))} className="text-destructive font-bold">×</button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <label className="text-sm font-semibold">APs Taken / Taking</label>
         <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-2 bg-muted/30">
@@ -262,12 +300,23 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
         <p className="text-xs text-muted-foreground mb-4">{selectedClubs.length} club(s) selected</p>
 
         <label className="text-sm font-semibold">🏅 Sports</label>
-        <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+        <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
           {ERHS_SPORTS.map(sport => (
-            <label key={sport} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
-              {sport}
-            </label>
+            <div key={sport} className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer flex-1">
+                <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
+                <span className="truncate">{sport}</span>
+              </label>
+              {selectedSports.includes(sport) && (
+                <select
+                  value={sportRoles.find(sr => sr.sport === sport)?.role || "Player"}
+                  onChange={e => setSportRole(sport, e.target.value as SportRole["role"])}
+                  className="w-28 p-1 border border-input rounded bg-card text-xs"
+                >
+                  {SPORT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              )}
+            </div>
           ))}
         </div>
 

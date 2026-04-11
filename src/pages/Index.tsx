@@ -10,6 +10,7 @@ import ClubsPage from "@/components/ClubsPage";
 import SATPage from "@/components/SATPage";
 import TranscriptsPage from "@/components/TranscriptsPage";
 import EssayPage from "@/components/EssayPage";
+import GraduationPage from "@/components/GraduationPage";
 
 type AppState = "auth" | "onboarding" | "app";
 
@@ -88,6 +89,7 @@ const Index = () => {
       {page === "sat" && <SATPage />}
       {page === "essays" && <EssayPage />}
       {page === "transcripts" && <TranscriptsPage />}
+      {page === "graduation" && <GraduationPage />}
     </div>
   );
 };
