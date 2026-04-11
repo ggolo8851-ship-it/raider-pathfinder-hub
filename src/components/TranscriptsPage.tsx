@@ -19,14 +19,14 @@ const TranscriptsPage = () => {
       </div>
 
       <h3 className="text-xl font-bold text-primary mb-4">🧑‍🏫 Your School Counselors</h3>
-      <p className="text-sm text-muted-foreground mb-4">Find your counselor based on your last name. Contact them for transcript help, college planning, or any academic concerns.</p>
+      <p className="text-sm text-muted-foreground mb-4">Find your counselor based on your last name. Call the school main office at <b>(301) 513-5400</b> to reach any counselor.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {ERHS_COUNSELORS.map((c, i) => (
           <div key={i} className="bg-card rounded-xl shadow-sm p-5 border-l-4 border-secondary">
             <p className="font-bold text-foreground text-lg">{c.name}</p>
             <p className="text-sm text-muted-foreground mb-2">Last Names: <b>{c.alpha}</b></p>
             <p className="text-sm">📧 <a href={`mailto:${c.email}`} className="text-primary underline">{c.email}</a></p>
-            <p className="text-sm">📞 {c.phone}</p>
+            <p className="text-sm">📞 ERHS Main Office: {c.phone}</p>
           </div>
         ))}
       </div>

@@ -40,8 +40,7 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
     return { ...item, daysLeft, isValidDate, isPast: daysLeft !== null && daysLeft < 0 };
   });
 
-  // Service hours: MD requires 75 hours
-  const serviceTarget = 75;
+  const serviceTarget = 24;
 
   return (
     <div>
@@ -85,7 +84,7 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
           <div className="flex flex-wrap gap-3 mt-8">
             <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
               className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              ESS Instagram 📸
+              📸 Follow ESS on Instagram
             </a>
             <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
               className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
