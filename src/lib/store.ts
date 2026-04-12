@@ -48,8 +48,6 @@ export interface User {
   profile: UserProfile;
   isNewSignup?: boolean;
   bookmarks: string[];
-  resetToken?: string;
-  resetTokenExpiry?: number;
 }
 
 export type UsersDB = Record<string, User>;
@@ -300,12 +298,38 @@ export const UNDECIDED_CAREER_EXPLORATIONS = [
   { field: "Sports & Athletics", majors: ["Sports Management", "Exercise Science", "Athletic Training", "Sports Medicine", "Recreation Management"], description: "Turn your passion for sports into a career." },
 ];
 
-export const ERHS_COUNSELORS = [
-  { name: "Ms. Johnson", alpha: "A-D", email: "counseling@pgcps.org", phone: "(301) 513-5400" },
-  { name: "Ms. Williams", alpha: "E-K", email: "counseling@pgcps.org", phone: "(301) 513-5400" },
-  { name: "Mr. Davis", alpha: "L-R", email: "counseling@pgcps.org", phone: "(301) 513-5400" },
-  { name: "Ms. Martinez", alpha: "S-Z", email: "counseling@pgcps.org", phone: "(301) 513-5400" },
+export interface CounselorInfo {
+  grade: string;
+  alphaRange: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export const ERHS_COUNSELORS_BY_GRADE: CounselorInfo[] = [
+  { grade: "9", alphaRange: "A-K", name: "Chandrika Ramsey", email: "chandrik.ramsey@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "9", alphaRange: "L-Z", name: "Lolethia Lomax-Frazier", email: "Ifrazier@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "10", alphaRange: "A-K", name: "Veronica Alston", email: "veronica.alston@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "10", alphaRange: "L-Z", name: "Pamela Roberts", email: "pamela.roberts@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "11", alphaRange: "A-K", name: "Thea Johnson", email: "thea.johnson@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "11", alphaRange: "L-Z", name: "Devonne Wood", email: "devonne.wood@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "12", alphaRange: "A-K", name: "Chereka Russell", email: "chereka.russell@pgcps.org", phone: "(301) 513-5400" },
+  { grade: "12", alphaRange: "L-Z", name: "Jason Powell", email: "jason.powell@pgcps.org", phone: "(301) 513-5400" },
 ];
+
+export const ERHS_COUNSELOR_CHAIR = {
+  name: "Dr. Marisha Stewart",
+  title: "Chairperson",
+  email: "marisha.stewart@pgcps.org",
+  phone: "(301) 513-5400",
+};
+
+export const ERHS_COUNSELORS = ERHS_COUNSELORS_BY_GRADE.map(c => ({
+  name: c.name,
+  alpha: `Grade ${c.grade} (${c.alphaRange})`,
+  email: c.email,
+  phone: c.phone,
+}));
 
 export const SAT_DEADLINES = [
   { testDate: "August 23, 2025", regDeadline: "August 8, 2025", lateDeadline: "August 12, 2025" },
@@ -472,10 +496,6 @@ export const ROADMAP_ITEMS: Record<string, { label: string; deadline: string }[]
     { label: "ERHS Graduation", deadline: "June 2029" },
   ],
 };
-
-export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 export function getDefaultProfile(): UserProfile {
   return {
