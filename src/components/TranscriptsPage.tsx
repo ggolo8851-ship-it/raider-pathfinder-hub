@@ -1,6 +1,8 @@
-import { ERHS_COUNSELORS } from "@/lib/store";
+import { ERHS_COUNSELORS_BY_GRADE, ERHS_COUNSELOR_CHAIR } from "@/lib/store";
 
 const TranscriptsPage = () => {
+  const grades = ["9", "10", "11", "12"];
+
   return (
     <div className="max-w-4xl mx-auto py-10 px-5">
       <h2 className="text-3xl font-bold text-primary mb-2">📄 Transcripts & Counseling</h2>
@@ -18,17 +20,35 @@ const TranscriptsPage = () => {
         </a>
       </div>
 
-      <h3 className="text-xl font-bold text-primary mb-4">🧑‍🏫 Your School Counselors</h3>
-      <p className="text-sm text-muted-foreground mb-4">Find your counselor based on your last name. Call the school main office at <b>(301) 513-5400</b> to reach any counselor.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {ERHS_COUNSELORS.map((c, i) => (
-          <div key={i} className="bg-card rounded-xl shadow-sm p-5 border-l-4 border-secondary">
-            <p className="font-bold text-foreground text-lg">{c.name}</p>
-            <p className="text-sm text-muted-foreground mb-2">Last Names: <b>{c.alpha}</b></p>
-            <p className="text-sm">📧 <a href={`mailto:${c.email}`} className="text-primary underline">{c.email}</a></p>
-            <p className="text-sm">📞 ERHS Main Office: {c.phone}</p>
+      <h3 className="text-xl font-bold text-primary mb-4">🧑‍🏫 ERHS School Counselors</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Find your counselor based on your <b>grade level</b> and <b>last name</b>. Call the school main office at <b>(301) 513-5400</b>.
+      </p>
+
+      {grades.map(grade => {
+        const counselors = ERHS_COUNSELORS_BY_GRADE.filter(c => c.grade === grade);
+        return (
+          <div key={grade} className="mb-6">
+            <h4 className="text-lg font-bold text-secondary mb-3">Grade {grade}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {counselors.map((c, i) => (
+                <div key={i} className="bg-card rounded-xl shadow-sm p-5 border-l-4 border-secondary">
+                  <p className="font-bold text-foreground text-lg">{c.name}</p>
+                  <p className="text-sm text-muted-foreground mb-2">Last Names: <b>{c.alphaRange}</b></p>
+                  <p className="text-sm">📧 <a href={`mailto:${c.email}`} className="text-primary underline">{c.email}</a></p>
+                  <p className="text-sm">📞 ERHS Main Office: {c.phone}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        );
+      })}
+
+      <div className="bg-primary/5 rounded-xl p-5 border-2 border-primary mb-8">
+        <p className="font-bold text-primary text-lg">{ERHS_COUNSELOR_CHAIR.name}</p>
+        <p className="text-sm text-muted-foreground mb-1">{ERHS_COUNSELOR_CHAIR.title} — Counseling Department</p>
+        <p className="text-sm">📧 <a href={`mailto:${ERHS_COUNSELOR_CHAIR.email}`} className="text-primary underline">{ERHS_COUNSELOR_CHAIR.email}</a></p>
+        <p className="text-sm">📞 {ERHS_COUNSELOR_CHAIR.phone}</p>
       </div>
 
       <div className="bg-card rounded-2xl shadow-lg p-6">
