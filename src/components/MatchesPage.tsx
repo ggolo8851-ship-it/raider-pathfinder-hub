@@ -321,7 +321,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
               </div>
             </div>
           )}
-          {loading ? (
+          {displayLoading ? (
             <p className="text-muted-foreground text-center py-8">Scanning college databases...</p>
           ) : displayColleges.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
