@@ -399,7 +399,11 @@ export async function searchColleges(
   if (!data.results) return [];
 
   const gpaNum = parseFloat(gpa) || 3.0;
-  const userSat = parseInt(sat) || 0;
+  // Support all 3 pathways: SAT, ACT (converted to SAT-equivalent), or test-optional
+  const ACT_TO_SAT: Record<number, number> = { 36: 1590, 35: 1540, 34: 1500, 33: 1460, 32: 1430, 31: 1400, 30: 1370, 29: 1340, 28: 1310, 27: 1280, 26: 1240, 25: 1210, 24: 1180, 23: 1140, 22: 1110, 21: 1080, 20: 1040, 19: 1010, 18: 970, 17: 930, 16: 890, 15: 850, 14: 800, 13: 760, 12: 710, 11: 670, 10: 630 };
+  let userSat = parseInt(sat) || 0;
+  const userAct = parseInt(act) || 0;
+  if (!userSat && userAct && ACT_TO_SAT[userAct]) userSat = ACT_TO_SAT[userAct];
 
   return data.results
     .map((c: any) => {
