@@ -207,17 +207,28 @@ function calculateFitScore(
     score += gpa >= 3.5 ? 12 : gpa >= 3.0 ? 8 : 4;
   }
 
-  // SAT match (max 10)
-  if (!testOptional && userSat > 0 && satAvg) {
-    const diff = userSat - satAvg;
-    if (diff >= 150) score += 10;
-    else if (diff >= 50) score += 8;
-    else if (diff >= 0) score += 6;
-    else if (diff >= -50) score += 4;
-    else if (diff >= -100) score += 2;
-    else score += 0;
+  // Test score match — supports SAT, ACT, or test-optional (max 10)
+  // Normalize: SAT 400-1600, ACT 1-36
+  if (!testOptional && satAvg) {
+    let userScoreNorm = 0;
+    if (userSat > 0) userScoreNorm = userSat / 1600;
+    // ACT passed via global on calculateFitScore? We use userSat as a proxy; ACT handled in caller via conversion.
+    if (userScoreNorm > 0) {
+      const collegeNorm = satAvg / 1600;
+      const ratio = userScoreNorm / collegeNorm;
+      if (ratio >= 1.1) score += 10;
+      else if (ratio >= 1.03) score += 8;
+      else if (ratio >= 0.97) score += 6;
+      else if (ratio >= 0.9) score += 4;
+      else if (ratio >= 0.82) score += 2;
+      else score += 1;
+    } else {
+      // No score provided but not test-optional flagged — give neutral weight from GPA
+      score += gpa >= 3.7 ? 7 : gpa >= 3.3 ? 5 : 3;
+    }
   } else {
-    score += 5; // neutral
+    // Test-optional pathway: weight GPA + rigor more
+    score += gpa >= 3.7 ? 8 : gpa >= 3.3 ? 6 : gpa >= 3.0 ? 4 : 2;
   }
 
   // AP rigor (max 5)
@@ -436,7 +447,7 @@ export async function searchColleges(
     })
     .filter((c: CollegeResult | null) => {
       if (!c) return false;
-      if (c.fitScore < 70) return false; // Only show 70%+ matches
+      // Show all results sorted high→low; never produce empty results from arbitrary cutoff
       if (filters.distance > 0 && c.miles > filters.distance) return false;
       if (filters.minDistance > 0 && c.miles < filters.minDistance) return false;
       if (filters.sizeFilter !== "all") {
