@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { searchColleges, getCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
+import { searchColleges, getCareerMatches, getCollegesByIds, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 
@@ -51,6 +51,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [loading, setLoading] = useState(false);
   const [careers, setCareers] = useState<CareerMatch[]>([]);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [bookmarkedColleges, setBookmarkedColleges] = useState<CollegeResult[]>([]);
+  const [bookmarksLoading, setBookmarksLoading] = useState(false);
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
   const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
 
@@ -70,7 +72,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   }, [profile]);
 
   useEffect(() => {
-    if (tab === "colleges" || tab === "bookmarks") {
+    if (tab === "colleges") {
       setLoading(true);
       const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
       const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, tuitionType, stateFilter, tierFilter, searchQuery: collegeSearch };
@@ -88,6 +90,23 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         .finally(() => setLoading(false));
     }
   }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, tuitionType, stateFilter, tierFilter, collegeSearch, email]);
+
+  // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
+  useEffect(() => {
+    if (tab !== "bookmarks") return;
+    if (bookmarks.length === 0) { setBookmarkedColleges([]); return; }
+    setBookmarksLoading(true);
+    getCollegesByIds(
+      bookmarks, profile.major, profile.gpa, profile.aps,
+      profile.clubs || [], profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], profile.sports || [],
+      profile.vibeAnswers || {}, profile.lat, profile.lon,
+      profile.testOptional, profile.interests || []
+    )
+      .then(setBookmarkedColleges)
+      .catch(() => setBookmarkedColleges([]))
+      .finally(() => setBookmarksLoading(false));
+  }, [tab, bookmarks, profile]);
 
   const distanceLabel = profile.lat && profile.lon ? "from your address" : "from ERHS";
 
@@ -111,9 +130,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     "Far Reach": "bg-red-100 text-red-800",
   };
 
-  const displayColleges = tab === "bookmarks"
-    ? colleges.filter(c => bookmarks.includes(String(c.id)))
-    : colleges;
+  const displayColleges = tab === "bookmarks" ? bookmarkedColleges : colleges;
+  const displayLoading = tab === "bookmarks" ? bookmarksLoading : loading;
 
   const renderCollegeCard = (c: CollegeResult, i: number) => (
     <div key={c.id + i} className="bg-card rounded-xl shadow-md mb-4 border-l-8 border-primary overflow-hidden">
@@ -303,7 +321,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
               </div>
             </div>
           )}
-          {loading ? (
+          {displayLoading ? (
             <p className="text-muted-foreground text-center py-8">Scanning college databases...</p>
           ) : displayColleges.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
