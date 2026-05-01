@@ -25,7 +25,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
       <div className="max-w-6xl mx-auto flex justify-between items-center px-5 py-4">
         <div className="relative">
           <button onClick={() => setShowMenu(!showMenu)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span className="text-secondary text-xl">🏫</span>
+            <img src="/ess-logo.png" alt="ESS Logo" className="h-9 w-9 object-contain bg-white rounded p-0.5" />
             <span className="text-primary-foreground text-xl font-bold">RaidersMatch</span>
             <span className="text-primary-foreground/60 text-xs">▼</span>
           </button>
