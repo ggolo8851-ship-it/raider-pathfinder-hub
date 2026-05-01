@@ -722,3 +722,117 @@ export function getCareerMatches(
 
   return careers;
 }
+
+// Fetch colleges by their IDs (used for bookmarks — bypasses all filters)
+export async function getCollegesByIds(
+  ids: string[],
+  major: string,
+  gpa: string,
+  aps: string[],
+  clubs: string[],
+  sat: string,
+  act: string,
+  extracurriculars: string[] = [],
+  sports: string[] = [],
+  vibeAnswers: Record<string, string> = {},
+  userLat?: number,
+  userLon?: number,
+  testOptional: boolean = false,
+  interests: string[] = []
+): Promise<CollegeResult[]> {
+  if (!ids || ids.length === 0) return [];
+  const queryField = getMajorField(major);
+  const majorLabel = getMajorLabel(major);
+  const originLat = userLat ?? ERHS_COORDS.lat;
+  const originLon = userLon ?? ERHS_COORDS.lon;
+
+  const fields = [
+    "id", "school.name", "school.city", "school.state", "school.school_url",
+    "location.lat", "location.lon", queryField,
+    "latest.student.size",
+    "latest.cost.tuition.in_state", "latest.cost.tuition.out_of_state",
+    "latest.admissions.admission_rate.overall",
+    "latest.admissions.sat_scores.average.overall",
+    "latest.student.demographics.race_ethnicity.white",
+    "latest.student.demographics.race_ethnicity.black",
+    "latest.student.demographics.race_ethnicity.hispanic",
+    "latest.student.demographics.race_ethnicity.asian",
+  ].join(",");
+
+  // Split numeric (real Scorecard IDs) from name-based fallbacks
+  const numericIds = ids.filter(i => /^\d+$/.test(i));
+  const nameIds = ids.filter(i => !/^\d+$/.test(i));
+
+  const gpaNum = parseFloat(gpa) || 3.0;
+  const ACT_TO_SAT: Record<number, number> = { 36:1590,35:1540,34:1500,33:1460,32:1430,31:1400,30:1370,29:1340,28:1310,27:1280,26:1240,25:1210,24:1180,23:1140,22:1110,21:1080,20:1040,19:1010,18:970,17:930,16:890,15:850,14:800,13:760,12:710,11:670,10:630 };
+  let userSat = parseInt(sat) || 0;
+  const userAct = parseInt(act) || 0;
+  if (!userSat && userAct && ACT_TO_SAT[userAct]) userSat = ACT_TO_SAT[userAct];
+
+  const results: any[] = [];
+
+  if (numericIds.length > 0) {
+    // Scorecard supports comma-separated id lookup
+    const url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&id=${numericIds.join(",")}&fields=${fields}&per_page=${numericIds.length}`;
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.results) results.push(...data.results);
+      }
+    } catch (e) { console.warn("Bookmark fetch failed", e); }
+  }
+
+  // For name-based bookmarks, do per-name searches
+  for (const name of nameIds) {
+    try {
+      const url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.name=${encodeURIComponent(name)}&fields=${fields}&per_page=1`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.results && data.results[0]) results.push(data.results[0]);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  return results
+    .map((c: any) => {
+      const lat = c['location.lat'];
+      const lon = c['location.lon'];
+      if (!lat || !lon) return null;
+      const miles = haversineDistance(originLat, originLon, lat, lon);
+      const enrollment = c['latest.student.size'] || null;
+      const admRate = c['latest.admissions.admission_rate.overall'] || null;
+      const satAvg = c['latest.admissions.sat_scores.average.overall'] || null;
+      const programPct = c[queryField] || 0;
+      const demographics = {
+        white: Math.round((c['latest.student.demographics.race_ethnicity.white'] || 0) * 100),
+        black: Math.round((c['latest.student.demographics.race_ethnicity.black'] || 0) * 100),
+        hispanic: Math.round((c['latest.student.demographics.race_ethnicity.hispanic'] || 0) * 100),
+        asian: Math.round((c['latest.student.demographics.race_ethnicity.asian'] || 0) * 100),
+        other: 0,
+      };
+      demographics.other = Math.max(0, 100 - demographics.white - demographics.black - demographics.hispanic - demographics.asian);
+      return {
+        name: c['school.name'],
+        city: c['school.city'],
+        state: c['school.state'],
+        url: c['school.school_url']?.includes('http') ? c['school.school_url'] : 'https://' + (c['school.school_url'] || ''),
+        miles,
+        majorPercentage: programPct,
+        majorLabel,
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests),
+        size: getSchoolSize(enrollment),
+        enrollment,
+        costInState: c['latest.cost.tuition.in_state'] || null,
+        costOutState: c['latest.cost.tuition.out_of_state'] || null,
+        admissionRate: admRate,
+        satAvg,
+        tier: getTier(satAvg, admRate, userSat, gpaNum, aps.length, testOptional),
+        id: String(c['id'] || c['school.name']),
+        demographics,
+      };
+    })
+    .filter((c: CollegeResult | null): c is CollegeResult => c !== null)
+    .sort((a, b) => b.fitScore - a.fitScore);
+}
