@@ -152,6 +152,10 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <span className="text-xs font-bold text-secondary">MATCH #{i + 1}</span>
             <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{c.fitScore}% FIT</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${tierColors[c.tier]}`}>{c.tier}</span>
+            {c.womenOnly && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">Women's College</span>}
+            {c.institutionalClassification?.filter(t => t !== "PWI" && t !== "Women's College" && t !== "Men's College").map(tag => (
+              <span key={tag} className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">{tag}</span>
+            ))}
           </div>
           <h4 className="text-lg font-bold text-primary mt-1">{c.name}</h4>
           <p className="text-sm text-muted-foreground">
