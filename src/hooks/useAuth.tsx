@@ -50,6 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setLoading(false);
+      // After we've loaded the session into memory, enforce the user's
+      // Remember Me preference (evict from localStorage if they said no).
+      enforceRememberPolicyOnBoot();
     });
 
     return () => subscription.unsubscribe();
