@@ -8,34 +8,6 @@ interface MatchesPageProps {
   email: string;
 }
 
-// Map popular schools to specific YouTube campus tour video IDs
-const VIRTUAL_TOUR_VIDEOS: Record<string, string> = {
-  "University of Maryland-College Park": "cGRagHboczY",
-  "Howard University": "4eZaP7JOXiI",
-  "Georgetown University": "f6YrMEb3VUo",
-  "George Washington University": "J5RYmnPBOEE",
-  "Johns Hopkins University": "kxBx_VH1RBA",
-  "University of Virginia-Main Campus": "8vg2I8bCFOk",
-  "Morgan State University": "YpJT5Y5TDmg",
-  "Bowie State University": "rBwL_b04mvs",
-  "Towson University": "6kkF1WqXDQk",
-  "Salisbury University": "dUVP2mnAknU",
-  "University of Baltimore": "oBPQbL12xas",
-  "American University": "8pQgLfChlcw",
-  "Catholic University of America": "aJj4yMaGdwY",
-  "Frostburg State University": "3KxAZ1uu0CM",
-  "St. Mary's College of Maryland": "RGa2fCB-DVk",
-  "Coppin State University": "NvqR3H0KMIE",
-  "University of Maryland-Baltimore County": "o-YGDuFT5WU",
-  "Loyola University Maryland": "xJHk7Tdjqxk",
-};
-
-const getVirtualTourUrl = (name: string): string => {
-  const videoId = VIRTUAL_TOUR_VIDEOS[name];
-  if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + " official campus tour")}`;
-};
-
 const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [tab, setTab] = useState<"colleges" | "careers" | "bookmarks">("colleges");
   const [distance, setDistance] = useState(0);
@@ -202,7 +174,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            <a href={getVirtualTourUrl(c.name)} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Virtual Tour 🎥</a>
+            
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>
