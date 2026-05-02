@@ -581,7 +581,7 @@ export async function searchColleges(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(name)),
         size,
         enrollment,
         costInState,
