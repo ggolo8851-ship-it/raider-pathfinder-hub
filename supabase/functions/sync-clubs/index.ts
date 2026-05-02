@@ -29,6 +29,8 @@ function extractSheetId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1mCnzMpRY0l1TbBooJl2MVQxCCLrq7dnL/edit?gid=1421045413";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -38,8 +40,13 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
     if (!GOOGLE_SHEETS_API_KEY) throw new Error("GOOGLE_SHEETS_API_KEY missing");
 
-    const { sheet_url } = await req.json();
-    const sheetId = extractSheetId(sheet_url ?? "");
+    let sheet_url: string | undefined;
+    try {
+      const body = await req.json();
+      sheet_url = body?.sheet_url;
+    } catch { /* empty body — use default */ }
+    sheet_url = sheet_url || DEFAULT_SHEET_URL;
+    const sheetId = extractSheetId(sheet_url);
     if (!sheetId) throw new Error("Invalid Google Sheet URL");
 
     // Get the spreadsheet metadata to find sheet names

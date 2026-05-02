@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { searchColleges, getCareerMatches, getCollegesByIds, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
+import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 
@@ -34,13 +34,25 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   }, [email]);
 
   useEffect(() => {
-    setCareers(getCareerMatches(
-      profile.major, profile.aps,
-      profile.clubs || [], profile.sports || [],
-      profile.isST, profile.extracurriculars || [],
-      profile.gpa, profile.achievements || [],
-      profile.interests || []
-    ));
+    let cancelled = false;
+    (async () => {
+      const fallback = getCareerMatches(
+        profile.major, profile.aps,
+        profile.clubs || [], profile.sports || [],
+        profile.isST, profile.extracurriculars || [],
+        profile.gpa, profile.achievements || [],
+        profile.interests || []
+      );
+      if (!cancelled) setCareers(fallback);
+      const ai = await aiGetCareerMatches({
+        major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+        aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+        extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+        interests: profile.interests, isST: profile.isST, gradYear: profile.gradYear,
+      });
+      if (!cancelled && ai && ai.length > 0) setCareers(ai);
+    })();
+    return () => { cancelled = true; };
   }, [profile]);
 
   useEffect(() => {
@@ -57,7 +69,19 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         profile.testOptional,
         profile.interests || []
       )
-        .then(setColleges)
+        .then(async (results) => {
+          setColleges(results); // show rule-based instantly
+          if (results.length > 0) {
+            const ranked = await aiRankColleges(results, {
+              major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+              aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+              extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+              interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
+              vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
+            });
+            setColleges(ranked);
+          }
+        })
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
@@ -172,6 +196,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             </div>
           )}
 
+          {c.aiReason && (
+            <div className="bg-primary/5 border-l-4 border-primary rounded-r p-2 mt-2">
+              <p className="text-sm"><b>🤖 Why this fits you:</b> {c.aiReason}</p>
+            </div>
+          )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>

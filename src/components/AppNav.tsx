@@ -39,10 +39,6 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
                 className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">🎓 Graduation Requirements</button>
               <a href="https://www.niche.com/colleges/search/best-colleges/" target="_blank" rel="noopener noreferrer"
                 className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">🏆 Niche Top 100 Colleges</a>
-              <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
-                className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">📸 ESS Instagram</a>
-              <button onClick={() => { onNavigate("settings"); setShowMenu(false); }}
-                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">⚙️ Settings</button>
               {isAdmin && onEnterAdmin && (
                 <button onClick={() => { onEnterAdmin(); setShowMenu(false); }}
                   className="w-full text-left px-4 py-3 text-sm font-semibold text-secondary bg-secondary/10 hover:bg-secondary/20">

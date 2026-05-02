@@ -31,6 +31,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [selectedSports, setSelectedSports] = useState<string[]>(profile.sports || []);
   const [sportRoles, setSportRoles] = useState<SportRole[]>(profile.sportRoles || []);
   const [clubSearch, setClubSearch] = useState("");
+  const [apSearch, setApSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>(profile.extracurriculars || []);
   const [newExtra, setNewExtra] = useState("");
   const [achievements, setAchievements] = useState<string[]>(profile.achievements || []);
@@ -249,8 +250,9 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
         )}
 
         <label className="text-sm font-semibold">APs Taken / Taking</label>
+        <Input placeholder="Search APs..." value={apSearch} onChange={e => setApSearch(e.target.value)} className="mb-2 mt-1" />
         <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-2 bg-muted/30">
-          {AP_LIST.map(ap => (
+          {AP_LIST.filter(ap => ap.toLowerCase().includes(apSearch.toLowerCase())).map(ap => (
             <label key={ap} className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={selectedAps.includes(ap)} onChange={() => toggleAp(ap)} className="accent-primary" />
               {ap}

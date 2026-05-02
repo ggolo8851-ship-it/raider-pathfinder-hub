@@ -89,6 +89,7 @@ export interface CollegeResult {
   tier: "Safety" | "Target" | "Possible Reach" | "Far Reach";
   id: string;
   vibeScore?: number;
+  aiReason?: string;
   demographics?: {
     white: number;
     black: number;
@@ -410,17 +411,34 @@ export async function searchColleges(
     "latest.student.demographics.race_ethnicity.asian",
   ].join(",");
 
-  let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=100&sort=latest.admissions.admission_rate.overall:asc`;
+  const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
 
-  if (filters.stateFilter === "maryland") url += "&school.state=MD";
-  if (filters.searchQuery && filters.searchQuery.trim().length > 1) {
-    url += `&school.name=${encodeURIComponent(filters.searchQuery.trim())}`;
+  const buildUrl = (page: number, perPage: number) => {
+    let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=${perPage}&page=${page}&sort=latest.admissions.admission_rate.overall:asc`;
+    if (filters.stateFilter === "maryland") url += "&school.state=MD";
+    if (hasSearchQuery) {
+      url += `&school.name=${encodeURIComponent(filters.searchQuery!.trim())}`;
+    }
+    return url;
+  };
+
+  // When the user is searching by name, paginate up to 3 pages (300 results) so we don't miss schools.
+  // Otherwise just grab the first 100.
+  const pages = hasSearchQuery ? [0, 1, 2] : [0];
+  const perPage = 100;
+  const allResults: any[] = [];
+  for (const p of pages) {
+    const resp = await fetch(buildUrl(p, perPage));
+    if (!resp.ok) {
+      if (allResults.length === 0) throw new Error("API error");
+      break;
+    }
+    const data = await resp.json();
+    if (!data.results || data.results.length === 0) break;
+    allResults.push(...data.results);
+    if (data.results.length < perPage) break;
   }
-
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error("API error");
-  const data = await resp.json();
-  if (!data.results) return [];
+  if (allResults.length === 0) return [];
 
   const gpaNum = parseFloat(gpa) || 3.0;
   // Support all 3 pathways: SAT, ACT (converted to SAT-equivalent), or test-optional
@@ -429,7 +447,7 @@ export async function searchColleges(
   const userAct = parseInt(act) || 0;
   if (!userSat && userAct && ACT_TO_SAT[userAct]) userSat = ACT_TO_SAT[userAct];
 
-  return data.results
+  return allResults
     .map((c: any) => {
       const lat = c['location.lat'];
       const lon = c['location.lon'];
@@ -475,9 +493,10 @@ export async function searchColleges(
     })
     .filter((c: CollegeResult | null) => {
       if (!c) return false;
-      // Show all results sorted high→low; never produce empty results from arbitrary cutoff
-      if (filters.distance > 0 && c.miles > filters.distance) return false;
-      if (filters.minDistance > 0 && c.miles < filters.minDistance) return false;
+      // When the user is doing a name search, RELAX distance/state filters so they actually see the institution they searched for.
+      const skipGeoFilters = hasSearchQuery;
+      if (!skipGeoFilters && filters.distance > 0 && c.miles > filters.distance) return false;
+      if (!skipGeoFilters && filters.minDistance > 0 && c.miles < filters.minDistance) return false;
       if (filters.sizeFilter !== "all") {
         const sizeKey = c.size.toLowerCase().replace(" ", "");
         if (sizeKey !== filters.sizeFilter) return false;
@@ -486,7 +505,7 @@ export async function searchColleges(
         const cost = filters.tuitionType === "in_state" ? c.costInState : c.costOutState;
         if (cost && cost > filters.maxCost) return false;
       }
-      if (filters.stateFilter === "out_of_state" && c.state === "MD") return false;
+      if (!skipGeoFilters && filters.stateFilter === "out_of_state" && c.state === "MD") return false;
       if (filters.tierFilter && filters.tierFilter !== "all") {
         if (filters.tierFilter === "safety_target" && (c.tier === "Far Reach" || c.tier === "Possible Reach")) return false;
         if (filters.tierFilter === "safety" && c.tier !== "Safety") return false;
@@ -502,6 +521,83 @@ export async function searchColleges(
       return true;
     })
     .sort((a: CollegeResult, b: CollegeResult) => b.fitScore - a.fitScore);
+}
+
+// AI re-rank wrapper: given the user's full profile and a list of CollegeResults,
+// call the ai-rank-colleges edge function to get personalized scores + reasons.
+// Falls back to the rule-based fitScore on any error.
+import { supabase } from "@/integrations/supabase/client";
+
+export async function aiRankColleges(
+  results: CollegeResult[],
+  profileSnapshot: Record<string, any>,
+  topN: number = 30
+): Promise<CollegeResult[]> {
+  if (results.length === 0) return results;
+  const candidates = results.slice(0, topN);
+  try {
+    const { data, error } = await supabase.functions.invoke("ai-rank-colleges", {
+      body: { profile: profileSnapshot, candidates },
+    });
+    if (error || !data?.rankings || !Array.isArray(data.rankings)) {
+      return results;
+    }
+    const rankMap = new Map<string, { score: number; reason: string }>();
+    for (const r of data.rankings) {
+      rankMap.set(String(r.college_id), {
+        score: Math.max(1, Math.min(100, Math.round(r.ai_fit_score))),
+        reason: r.reason || "",
+      });
+    }
+    const updated = results.map(c => {
+      const ai = rankMap.get(String(c.id));
+      if (!ai) return c;
+      return { ...c, fitScore: ai.score, aiReason: ai.reason };
+    });
+    return updated.sort((a, b) => b.fitScore - a.fitScore);
+  } catch (e) {
+    console.warn("AI rank failed, falling back to rule-based scores:", e);
+    return results;
+  }
+}
+
+// AI-powered career matches — fully personalized using the user's profile.
+// Falls back to rule-based getCareerMatches() on any error.
+export async function aiGetCareerMatches(
+  profileSnapshot: Record<string, any>
+): Promise<CareerMatch[] | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("ai-rank-careers", {
+      body: { profile: profileSnapshot },
+    });
+    if (error || !data?.careers || !Array.isArray(data.careers)) return null;
+    return data.careers.map((c: any) => ({
+      title: c.title,
+      description: c.description,
+      salaryRange: c.salaryRange || "—",
+      growth: c.growth || "—",
+      searchLink: `https://www.indeed.com/jobs?q=${encodeURIComponent(c.title)}`,
+      relatedClubs: c.relatedClubs || [],
+      whyForYou: c.whyForYou || "",
+      skills: c.skills || [],
+      workType: c.workType || "—",
+      conditions: c.conditions || "—",
+    })).sort((a: any, b: any) => (b.fit_score ?? 0) - (a.fit_score ?? 0));
+  } catch (e) {
+    console.warn("AI career match failed:", e);
+    return null;
+  }
+}
+
+// Live clubs fetch — pulls from the synced `clubs` table (kept up-to-date by sync-clubs cron).
+export async function fetchLiveClubs(): Promise<string[] | null> {
+  try {
+    const { data, error } = await supabase.from("clubs").select("name").order("name");
+    if (error || !data) return null;
+    return data.map(c => c.name).filter(Boolean);
+  } catch {
+    return null;
+  }
 }
 
 export interface CareerMatch {

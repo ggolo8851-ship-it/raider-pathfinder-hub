@@ -118,8 +118,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
   return (
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <img src="/ess-logo.png" alt="ESS" className="h-10 w-10 object-contain" />
+        <div className="flex items-center justify-center mb-6">
           <h1 className="text-3xl font-bold text-primary">RaidersMatch</h1>
         </div>
 
