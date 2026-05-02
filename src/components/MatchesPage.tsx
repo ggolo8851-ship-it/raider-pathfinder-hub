@@ -196,6 +196,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             </div>
           )}
 
+          {c.aiReason && (
+            <div className="bg-primary/5 border-l-4 border-primary rounded-r p-2 mt-2">
+              <p className="text-sm"><b>🤖 Why this fits you:</b> {c.aiReason}</p>
+            </div>
+          )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
