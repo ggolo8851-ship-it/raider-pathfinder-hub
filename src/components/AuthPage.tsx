@@ -128,7 +128,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
         {view === "login" && (
           <>
             <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
+            <PasswordInput placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
               className="mb-4" autoComplete="current-password" onKeyDown={e => e.key === "Enter" && handleLogin()} />
             <Button onClick={handleLogin} disabled={loading} className="w-full mb-3">{loading ? "Signing in..." : "Sign In"}</Button>
             <Button onClick={handleGoogle} variant="outline" className="w-full mb-3">
@@ -148,7 +148,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
             <h2 className="text-xl font-semibold text-primary mb-4">Join Students for Success</h2>
             <Input placeholder="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} className="mb-3" autoComplete="name" />
             <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Input type="password" placeholder="Password (min 6 chars)" value={password} onChange={e => setPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
+            <PasswordInput placeholder="Password (min 6 chars)" value={password} onChange={e => setPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
 
             <div className="bg-muted/40 rounded-lg p-3 mb-3 text-left">
               <p className="text-xs font-semibold text-primary mb-1">🔐 Security Code</p>
@@ -156,9 +156,9 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
                 Pick a code only you'll remember (min 6 chars). If you ever forget your password,
                 you'll use this code to reset it — no email required.
               </p>
-              <Input type="password" placeholder="Security code" value={securityCode}
+              <PasswordInput placeholder="Security code" value={securityCode}
                 onChange={e => setSecCode(e.target.value)} className="mb-2" autoComplete="off" />
-              <Input type="password" placeholder="Confirm security code" value={securityCodeConfirm}
+              <PasswordInput placeholder="Confirm security code" value={securityCodeConfirm}
                 onChange={e => setSecCodeConfirm(e.target.value)} autoComplete="off" />
             </div>
 
@@ -177,11 +177,11 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
             </p>
             <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
               className="mb-3" autoComplete="email" />
-            <Input type="password" placeholder="Your security code" value={securityCode}
+            <PasswordInput placeholder="Your security code" value={securityCode}
               onChange={e => setSecCode(e.target.value)} className="mb-3" autoComplete="off" />
-            <Input type="password" placeholder="New password (min 6 chars)" value={newPassword}
+            <PasswordInput placeholder="New password (min 6 chars)" value={newPassword}
               onChange={e => setNewPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
-            <Input type="password" placeholder="Confirm new password" value={confirmPassword}
+            <PasswordInput placeholder="Confirm new password" value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)} className="mb-3" autoComplete="new-password"
               onKeyDown={e => e.key === "Enter" && handleResetWithCode()} />
             <Button onClick={handleResetWithCode} disabled={loading} className="w-full mb-3">
