@@ -415,6 +415,24 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   </select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Institutional Classification</label>
+                  <select value={msiFilter} onChange={e => setMsiFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All Institutions</option>
+                    <option value="womens">Women's Colleges</option>
+                    <option value="hbcu">HBCU (Historically Black)</option>
+                    <option value="hsi">HSI (Hispanic-Serving)</option>
+                    <option value="aanapisi">AANAPISI (AAPI-Serving)</option>
+                    <option value="tcu">TCU (Tribal Colleges)</option>
+                    <option value="annh">ANNH (Alaska Native/Native Hawaiian)</option>
+                    <option value="pbi">PBI (Predominantly Black)</option>
+                    <option value="pwi">PWI (Predominantly White)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
           {tab === "colleges" && tierFilter === "international" && (
