@@ -350,6 +350,30 @@ export interface SearchFilters {
   searchQuery?: string;
 }
 
+// Curated lists of "Hidden Ivies" (highly regarded liberal arts/research universities outside the Ivy League)
+// and US Service Academies. These match against the College Scorecard `school.name` field.
+export const HIDDEN_IVIES = new Set<string>([
+  "Amherst College", "Williams College", "Pomona College", "Swarthmore College",
+  "Wesleyan University", "Bowdoin College", "Carleton College", "Middlebury College",
+  "Vassar College", "Haverford College", "Davidson College", "Colgate University",
+  "Hamilton College", "Bates College", "Colby College", "Reed College", "Kenyon College",
+  "Oberlin College", "Smith College", "Mount Holyoke College", "Bryn Mawr College",
+  "Wellesley College", "Barnard College", "Claremont McKenna College",
+  "Harvey Mudd College", "Scripps College", "Pitzer College", "Trinity College",
+  "Skidmore College", "Connecticut College", "Bucknell University", "Lafayette College",
+  "Lehigh University", "University of Rochester", "Tufts University", "Emory University",
+  "Vanderbilt University", "Washington University in St Louis", "Rice University",
+  "Tulane University of Louisiana", "Boston College", "Georgetown University",
+  "University of Notre Dame", "University of Chicago",
+]);
+
+export const SERVICE_ACADEMIES = new Set<string>([
+  "United States Military Academy", "United States Naval Academy",
+  "United States Air Force Academy", "United States Coast Guard Academy",
+  "United States Merchant Marine Academy",
+]);
+
+
 export async function searchColleges(
   major: string,
   filters: SearchFilters,
@@ -470,6 +494,10 @@ export async function searchColleges(
         if (filters.tierFilter === "possible_reach" && c.tier !== "Possible Reach") return false;
         if (filters.tierFilter === "far_reach" && c.tier !== "Far Reach") return false;
         if (filters.tierFilter === "reach" && c.tier !== "Possible Reach" && c.tier !== "Far Reach") return false;
+        if (filters.tierFilter === "hidden_ivies" && !HIDDEN_IVIES.has(c.name)) return false;
+        if (filters.tierFilter === "service_academies" && !SERVICE_ACADEMIES.has(c.name)) return false;
+        // International filter: College Scorecard only contains US schools, so this surfaces a hint instead of filtering
+        if (filters.tierFilter === "international") return false;
       }
       return true;
     })

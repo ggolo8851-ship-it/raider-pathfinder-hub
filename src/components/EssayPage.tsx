@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const ESSAY_PROMPTS = [
   {
@@ -68,12 +69,41 @@ const CLICHES = [
   "pushed me out of my comfort zone", "at the end of the day",
 ];
 
+interface AIGrade {
+  score: number;
+  verdict: string;
+  rubric: { hookVoice: number; storySpecificity: number; insightReflection: number; structureFlow: number; mechanicsStyle: number; fitToPrompt: number; };
+  strengths: string[];
+  weaknesses: string[];
+  revisionPlan: string[];
+}
+
 const EssayPage = () => {
   const [essay, setEssay] = useState("");
+  const [essayPrompt, setEssayPrompt] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "warning" | "error" | "info"; text: string }[]>([]);
   const [wordCount, setWordCount] = useState(0);
   const [activeTab, setActiveTab] = useState<"write" | "prompts" | "tips" | "resources">("write");
   const [essayScore, setEssayScore] = useState<number | null>(null);
+  const [aiGrade, setAiGrade] = useState<AIGrade | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const runAIGrader = async () => {
+    setAiLoading(true); setAiError(null); setAiGrade(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("grade-essay", {
+        body: { essay, prompt: essayPrompt || undefined },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setAiGrade(data as AIGrade);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Failed to grade essay");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const analyzeEssay = () => {
     const words = essay.trim().split(/\s+/).filter(Boolean);
@@ -230,6 +260,7 @@ const EssayPage = () => {
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
     if (feedback.length > 0) setFeedback([]);
     setEssayScore(null);
+    setAiGrade(null); setAiError(null);
   };
 
   const typeColors = {
@@ -274,6 +305,13 @@ const EssayPage = () => {
                 </span>
               </div>
             </div>
+            <input
+              type="text"
+              value={essayPrompt}
+              onChange={e => setEssayPrompt(e.target.value)}
+              placeholder="(Optional) Paste the essay prompt here for sharper grading..."
+              className="w-full p-2 mb-2 border border-input rounded-lg bg-background text-foreground text-sm"
+            />
             <textarea
               value={essay}
               onChange={e => handleEssayChange(e.target.value)}
@@ -284,13 +322,71 @@ const EssayPage = () => {
               <div className={`h-full rounded-full transition-all ${wordCount > 650 ? "bg-destructive" : wordCount >= 250 ? "bg-green-500" : "bg-secondary"}`}
                 style={{ width: `${Math.min(100, (wordCount / 650) * 100)}%` }} />
             </div>
-            <Button onClick={analyzeEssay} disabled={essay.trim().length < 50} className="w-full mt-3">
-              🔍 Grade My Essay (out of 100)
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+              <Button onClick={analyzeEssay} disabled={essay.trim().length < 50} variant="outline">
+                🔍 Quick Mechanical Grade
+              </Button>
+              <Button onClick={runAIGrader} disabled={essay.trim().length < 50 || aiLoading}>
+                {aiLoading ? "🧠 AI grading…" : "🧠 Brutal AI Grade (/100)"}
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Checks: word count, clichés, vague language, sentence variety, passive voice, grammar, readability, repetition, structure, capitalization
+              Mechanical = clichés, grammar, structure. AI = brutally honest Ivy reader on hook, story, insight, structure, mechanics & fit.
             </p>
           </div>
+
+          {aiError && (
+            <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-3 rounded mt-4 text-sm">{aiError}</div>
+          )}
+
+          {aiGrade && (
+            <div className="bg-card rounded-xl shadow-md p-6 border border-border mt-4">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 className="text-lg font-bold text-primary">🧠 Brutal AI Grade</h3>
+                <span className={`text-2xl font-extrabold px-4 py-1 rounded-full ${
+                  aiGrade.score >= 85 ? "bg-green-100 text-green-800" :
+                  aiGrade.score >= 70 ? "bg-blue-100 text-blue-800" :
+                  aiGrade.score >= 55 ? "bg-yellow-100 text-yellow-800" :
+                  "bg-red-100 text-red-800"
+                }`}>{aiGrade.score}/100</span>
+              </div>
+              <p className="italic text-foreground mb-4">"{aiGrade.verdict}"</p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4 text-xs">
+                <div className="bg-muted/40 p-2 rounded"><b>Hook & Voice</b><br/>{aiGrade.rubric.hookVoice}/20</div>
+                <div className="bg-muted/40 p-2 rounded"><b>Story & Specificity</b><br/>{aiGrade.rubric.storySpecificity}/25</div>
+                <div className="bg-muted/40 p-2 rounded"><b>Insight & Reflection</b><br/>{aiGrade.rubric.insightReflection}/20</div>
+                <div className="bg-muted/40 p-2 rounded"><b>Structure & Flow</b><br/>{aiGrade.rubric.structureFlow}/15</div>
+                <div className="bg-muted/40 p-2 rounded"><b>Mechanics & Style</b><br/>{aiGrade.rubric.mechanicsStyle}/10</div>
+                <div className="bg-muted/40 p-2 rounded"><b>Fit to Prompt</b><br/>{aiGrade.rubric.fitToPrompt}/10</div>
+              </div>
+
+              {aiGrade.strengths?.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="font-bold text-green-700 text-sm mb-1">✅ Strengths</h4>
+                  <ul className="list-disc list-inside text-sm space-y-1 text-foreground">
+                    {aiGrade.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {aiGrade.weaknesses?.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="font-bold text-red-700 text-sm mb-1">🚫 Weaknesses</h4>
+                  <ul className="list-disc list-inside text-sm space-y-1 text-foreground">
+                    {aiGrade.weaknesses.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {aiGrade.revisionPlan?.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-primary text-sm mb-1">📝 Revision Plan</h4>
+                  <ol className="list-decimal list-inside text-sm space-y-1 text-foreground">
+                    {aiGrade.revisionPlan.map((s, i) => <li key={i}>{s}</li>)}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
 
           {feedback.length > 0 && (
             <div className="bg-card rounded-xl shadow-md p-6 border border-border mt-4 space-y-2">

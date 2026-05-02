@@ -174,9 +174,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Common Data Set 📊</a>
+            <a href={`https://www.usnews.com/best-colleges/search?school-name=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">US News Ranking 🏆</a>
+            <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Niche Reviews ↗</a>
           </div>
         </div>
       )}
@@ -288,9 +290,20 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="possible_reach">Possible Reach Only</option>
                     <option value="far_reach">Far Reach Only</option>
                     <option value="reach">All Reach Schools</option>
+                    <option value="hidden_ivies">Hidden Ivies</option>
+                    <option value="service_academies">Service Academies</option>
+                    <option value="international">International (browse links)</option>
                   </select>
                 </div>
               </div>
+            </div>
+          )}
+          {tab === "colleges" && tierFilter === "international" && (
+            <div className="bg-secondary/10 border-l-4 border-secondary rounded-r-lg p-3 text-sm text-foreground mb-4">
+              🌍 International schools aren't in the US College Scorecard database. Try these directories:
+              {" "}<a className="underline text-primary" href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer">QS World Rankings ↗</a>,
+              {" "}<a className="underline text-primary" href="https://www.timeshighereducation.com/world-university-rankings" target="_blank" rel="noopener noreferrer">THE Rankings ↗</a>,
+              {" "}<a className="underline text-primary" href="https://www.studyportals.com/" target="_blank" rel="noopener noreferrer">Studyportals ↗</a>.
             </div>
           )}
           {displayLoading ? (
@@ -337,10 +350,14 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-secondary">{c.salaryRange}</p>
                       <p className="text-xs text-muted-foreground">{c.growth}</p>
-                      <a href={c.searchLink} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-primary underline mt-1 inline-block">Search on Indeed ↗</a>
+                      <div className="flex flex-col items-end gap-0.5 mt-1">
+                        <a href={c.searchLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Indeed ↗</a>
+                        <a href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">LinkedIn ↗</a>
+                        <a href={`https://www.glassdoor.com/Job/${encodeURIComponent(c.title.toLowerCase().replace(/\s+/g, "-"))}-jobs-SRCH_KO0,${c.title.length}.htm`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Glassdoor ↗</a>
+                        <a href={`https://app.joinhandshake.com/stu/postings?keywords=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Handshake ↗</a>
+                      </div>
                       <button onClick={() => setExpandedCareer(expandedCareer === c.title ? null : c.title)}
-                        className="text-xs text-primary underline mt-1 block">
+                        className="text-xs text-primary underline mt-2 block">
                         {expandedCareer === c.title ? "Less Info" : "More Info"}
                       </button>
                     </div>
