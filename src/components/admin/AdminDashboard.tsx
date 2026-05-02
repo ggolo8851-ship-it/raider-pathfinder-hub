@@ -11,6 +11,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import FacultyAdminPanel from "./FacultyAdminPanel";
 
 interface Props {
   onExit: () => void;
