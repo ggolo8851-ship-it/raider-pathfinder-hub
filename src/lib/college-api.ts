@@ -1150,7 +1150,7 @@ export async function getCollegesByIds(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(c['school.name'])),
         size: getSchoolSize(enrollment),
         enrollment,
         costInState: c['latest.cost.tuition.in_state'] || null,
