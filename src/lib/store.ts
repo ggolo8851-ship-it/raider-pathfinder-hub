@@ -52,8 +52,21 @@ export interface User {
 
 export type UsersDB = Record<string, User>;
 
-const DB_KEY = 'raider_db';
-const SESSION_KEY = 'raider_session';
+const STORAGE_VERSION = 'v2';
+const DB_KEY = `raider_db_${STORAGE_VERSION}`;
+const SESSION_KEY = `raider_session_${STORAGE_VERSION}`;
+
+// One-time cleanup of old cached data from previous versions
+if (typeof window !== 'undefined') {
+  try {
+    const cleanupFlag = `raider_cleanup_${STORAGE_VERSION}`;
+    if (!localStorage.getItem(cleanupFlag)) {
+      localStorage.removeItem('raider_db');
+      localStorage.removeItem('raider_session');
+      localStorage.setItem(cleanupFlag, '1');
+    }
+  } catch {}
+}
 
 export const AP_LIST = [
   "AP African American Studies",
