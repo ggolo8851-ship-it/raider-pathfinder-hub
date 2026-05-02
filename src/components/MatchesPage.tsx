@@ -378,6 +378,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="intl">International Only</option>
                   </select>
                 </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Test Policy</label>
+                  <select value={testPolicyFilter} onChange={e => setTestPolicyFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">Any Test Policy</option>
+                    <option value="required">SAT/ACT Required</option>
+                    <option value="optional">Test-Optional</option>
+                    <option value="blind">Test-Blind</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
