@@ -4,7 +4,8 @@ const GraduationPage = () => {
   return (
     <div className="max-w-4xl mx-auto py-10 px-5">
       <h2 className="text-3xl font-bold text-primary mb-2">🎓 Maryland Graduation Requirements</h2>
-      <p className="text-muted-foreground mb-8">Standard Maryland High School graduation requirements — all credits included</p>
+      <p className="text-muted-foreground mb-2">Standard Maryland High School graduation requirements — Class of 2026 (22 credits)</p>
+      <p className="text-xs text-muted-foreground mb-8">Source: <a href="https://www.pgcps.org/offices/curriculum-and-instruction/graduation-requirements" target="_blank" rel="noopener noreferrer" className="text-primary underline">PGCPS Graduation Requirements ↗</a></p>
 
       <div className="bg-card rounded-2xl shadow-lg p-6 mb-8">
         <h3 className="text-xl font-bold text-primary mb-4">📋 Required Credits</h3>

@@ -290,6 +290,60 @@ export type Database = {
         }
         Relationships: []
       }
+      international_colleges: {
+        Row: {
+          admit_rate: number | null
+          athletic_division: string | null
+          avg_cost_usd: number | null
+          city: string | null
+          country: string
+          created_at: string
+          enrollment: number | null
+          id: string
+          name: string
+          notes: string | null
+          order_index: number
+          programs: string[]
+          setting: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          admit_rate?: number | null
+          athletic_division?: string | null
+          avg_cost_usd?: number | null
+          city?: string | null
+          country: string
+          created_at?: string
+          enrollment?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          order_index?: number
+          programs?: string[]
+          setting?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          admit_rate?: number | null
+          athletic_division?: string | null
+          avg_cost_usd?: number | null
+          city?: string | null
+          country?: string
+          created_at?: string
+          enrollment?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          order_index?: number
+          programs?: string[]
+          setting?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           admin_nickname: string | null
@@ -382,6 +436,30 @@ export type Database = {
           id?: string
           logo_url?: string | null
           mobile_spacing?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      system_state: {
+        Row: {
+          id: string
+          last_refresh_at: string | null
+          last_refresh_summary: Json | null
+          next_refresh_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          last_refresh_at?: string | null
+          last_refresh_summary?: Json | null
+          next_refresh_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_refresh_at?: string | null
+          last_refresh_summary?: Json | null
+          next_refresh_at?: string | null
           updated_at?: string
         }
         Relationships: []
