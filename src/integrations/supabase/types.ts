@@ -194,6 +194,33 @@ export type Database = {
         }
         Relationships: []
       }
+      contributors: {
+        Row: {
+          contribution: string | null
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          contribution?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          contribution?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_blacklist: {
         Row: {
           added_by: string | null
@@ -215,6 +242,51 @@ export type Database = {
           email?: string
           id?: string
           reason?: string | null
+        }
+        Relationships: []
+      }
+      faculty: {
+        Row: {
+          bio_full: string | null
+          bio_short: string | null
+          contact_link: string | null
+          contributions: string | null
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          projects: string | null
+          role: string | null
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          bio_full?: string | null
+          bio_short?: string | null
+          contact_link?: string | null
+          contributions?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          projects?: string | null
+          role?: string | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          bio_full?: string | null
+          bio_short?: string | null
+          contact_link?: string | null
+          contributions?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          projects?: string | null
+          role?: string | null
+          tags?: string[]
+          updated_at?: string
         }
         Relationships: []
       }
