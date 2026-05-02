@@ -176,6 +176,13 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance:</b> {c.miles.toFixed(1)} miles {distanceLabel}</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
+          {c.chancePct != null && <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>}
+          {c.setting && <p><b>🌆 Setting:</b> {c.setting}</p>}
+          {c.athleticDivision && c.athleticDivision !== "Unknown" && <p><b>🏟️ Athletics:</b> {c.athleticDivision}</p>}
+          {c.country && c.country !== "USA" && <p><b>🌍 Country:</b> {c.country}</p>}
+          {c.bestKnownPrograms && c.bestKnownPrograms.length > 0 && (
+            <p><b>⭐ Best Known For:</b> {c.bestKnownPrograms.slice(0, 3).join(", ")}</p>
+          )}
           {profile.testOptional && <p className="text-xs text-secondary font-semibold">📝 Classified as test-optional student — SAT not weighted in tier calculation</p>}
           
           {c.demographics && (
@@ -205,11 +212,12 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
+            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (YouTube) ↗</a>
+            <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🏆 Niche Ranking ↗</a>
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " 2024 2025 common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set ↗</a>
+            <a href={`https://collegescorecard.ed.gov/school?id=${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">💰 Salary Data ↗</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Common Data Set 📊</a>
-            <a href={`https://www.usnews.com/best-colleges/search?school-name=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">US News Ranking 🏆</a>
-            <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Niche Reviews ↗</a>
           </div>
         </div>
       )}
@@ -264,7 +272,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -274,14 +282,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="medium">Medium (2K-10K)</option>
                     <option value="large">Large (10K-25K)</option>
                     <option value="verylarge">Very Large (25K+)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-foreground">Tuition Type</label>
-                  <select value={tuitionType} onChange={e => setTuitionType(e.target.value as any)}
-                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
-                    <option value="out_of_state">Out-of-State</option>
-                    <option value="in_state">In-State</option>
                   </select>
                 </div>
                 <div>
@@ -324,6 +324,41 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="hidden_ivies">Hidden Ivies</option>
                     <option value="service_academies">Service Academies</option>
                     <option value="international">International (browse links)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Prestige Class</label>
+                  <select value={classificationFilter} onChange={e => setClassificationFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All Classes</option>
+                    <option value="tier1">Tier 1 (Elite/Ivy+)</option>
+                    <option value="tier2">Tier 2 (Top 50)</option>
+                    <option value="tier3">Tier 3 (Highly Selective/Top Publics)</option>
+                    <option value="tier4">Tier 4 (Strong Regional/Large Publics)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Athletic Division</label>
+                  <select value={athleticFilter} onChange={e => setAthleticFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">Any Division</option>
+                    <option value="d1">NCAA D1</option>
+                    <option value="d2">NCAA D2</option>
+                    <option value="d3">NCAA D3</option>
+                    <option value="naia">NAIA</option>
+                    <option value="none">No Athletics</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Country</label>
+                  <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">US + International</option>
+                    <option value="us">United States Only</option>
+                    <option value="intl">International Only</option>
                   </select>
                 </div>
               </div>

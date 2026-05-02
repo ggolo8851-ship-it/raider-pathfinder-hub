@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 5, 0);
   await admin.from("system_state").upsert({
-    id: "global",
+    id: "data_refresh",
     last_refresh_at: now.toISOString(),
     next_refresh_at: next.toISOString(),
     last_refresh_summary: summary,

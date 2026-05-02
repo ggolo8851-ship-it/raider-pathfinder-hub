@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
+import RefreshCountdown from "@/components/RefreshCountdown";
 
 
 interface HomePageProps {
@@ -54,6 +55,8 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
               Our goal is simple: Make sure every student has access to what they need to succeed."
             </p>
           </div>
+
+          <div className="mt-4"><RefreshCountdown /></div>
 
           {daysUntilMarch > 0 && msDiff > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
