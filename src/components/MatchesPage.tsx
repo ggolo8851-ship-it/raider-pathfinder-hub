@@ -20,6 +20,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [classificationFilter, setClassificationFilter] = useState("all");
   const [athleticFilter, setAthleticFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
+  const [testPolicyFilter, setTestPolicyFilter] = useState("all");
   const [collegeSearch, setCollegeSearch] = useState("");
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +62,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     if (tab === "colleges") {
       setLoading(true);
       const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, searchQuery: collegeSearch };
+      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, searchQuery: collegeSearch };
       searchColleges(
         profile.major, filters, email, profile.gpa, profile.aps,
         profile.clubs || [], profile.sat || "", profile.act || "",
@@ -87,7 +88,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, collegeSearch, email]);
+  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, collegeSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
