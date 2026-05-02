@@ -155,144 +155,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_send_log: {
-        Row: {
-          created_at: string
-          error_message: string | null
-          id: string
-          message_id: string | null
-          metadata: Json | null
-          recipient_email: string
-          status: string
-          template_name: string
-        }
-        Insert: {
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          message_id?: string | null
-          metadata?: Json | null
-          recipient_email: string
-          status: string
-          template_name: string
-        }
-        Update: {
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          message_id?: string | null
-          metadata?: Json | null
-          recipient_email?: string
-          status?: string
-          template_name?: string
-        }
-        Relationships: []
-      }
-      email_send_state: {
-        Row: {
-          auth_email_ttl_minutes: number
-          batch_size: number
-          id: number
-          retry_after_until: string | null
-          send_delay_ms: number
-          transactional_email_ttl_minutes: number
-          updated_at: string
-        }
-        Insert: {
-          auth_email_ttl_minutes?: number
-          batch_size?: number
-          id?: number
-          retry_after_until?: string | null
-          send_delay_ms?: number
-          transactional_email_ttl_minutes?: number
-          updated_at?: string
-        }
-        Update: {
-          auth_email_ttl_minutes?: number
-          batch_size?: number
-          id?: number
-          retry_after_until?: string | null
-          send_delay_ms?: number
-          transactional_email_ttl_minutes?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      email_subscriptions: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          welcome_sent: boolean
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          welcome_sent?: boolean
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          welcome_sent?: boolean
-        }
-        Relationships: []
-      }
-      email_unsubscribe_tokens: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          token: string
-          used_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          token: string
-          used_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          token?: string
-          used_at?: string | null
-        }
-        Relationships: []
-      }
-      password_reset_requests: {
-        Row: {
-          attempts: number
-          code: string
-          created_at: string
-          email: string
-          expires_at: string
-          id: string
-          used: boolean
-        }
-        Insert: {
-          attempts?: number
-          code: string
-          created_at?: string
-          email: string
-          expires_at: string
-          id?: string
-          used?: boolean
-        }
-        Update: {
-          attempts?: number
-          code?: string
-          created_at?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          used?: boolean
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           admin_nickname: string | null
@@ -335,27 +197,27 @@ export type Database = {
         }
         Relationships: []
       }
-      suppressed_emails: {
+      security_code_attempts: {
         Row: {
           created_at: string
           email: string
           id: string
-          metadata: Json | null
-          reason: string
+          ip: string | null
+          succeeded: boolean
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
-          metadata?: Json | null
-          reason: string
+          ip?: string | null
+          succeeded?: boolean
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
-          metadata?: Json | null
-          reason?: string
+          ip?: string | null
+          succeeded?: boolean
         }
         Relationships: []
       }
@@ -376,6 +238,30 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_security_codes: {
+        Row: {
+          code_hash: string
+          code_salt: string
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          code_salt: string
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          code_salt?: string
+          created_at?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
