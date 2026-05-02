@@ -1,126 +1,59 @@
+## Real root cause of the missing admin toggle
 
-# RaidersMatch Major Overhaul
+Your account `ggolo8851@gmail.com` IS admin in the database. But the browser can't tell, because every role lookup is returning **403 "permission denied for function has_role"**.
 
-A large request broken into 7 independent workstreams. Each can be implemented and tested separately.
+The RLS policies on `user_roles`, `email_blacklist`, `profiles`, etc. all call `public.has_role(auth.uid(), 'admin')`. The function exists and is `SECURITY DEFINER`, but the `authenticated` Postgres role was never granted `EXECUTE` on it. So every policy evaluation throws 403 → `useAuth` sets `isAdmin=false` → AppNav hides the 🛡️ Admin Dashboard button.
 
----
+That's why no whitelisted user is getting admin mode.
 
-## 1. Wipe all users (fresh start)
+## What I'll fix
 
-**What happens:**
-- Delete every row from `auth.users` (cascades to `profiles`, `bookmarks`, `user_roles`, `user_security_codes`, `admin_audit_log` user refs).
-- Keep `admin_whitelist`, `clubs`, `college_overrides`, `site_settings`, `email_blacklist` intact.
-- Existing localStorage data (`getUsers()`/`saveUsers()` in `src/lib/store.ts`) is per-browser; clear it on first load by bumping a `STORAGE_VERSION` key so any cached profile is wiped client-side too.
-- The existing `handle_new_user` trigger + `sync_admin_from_whitelist` trigger already auto-grant admin to whitelisted emails, so admins re-signup → instantly admin.
+### 1. Grant EXECUTE on `has_role` (DB migration — fixes admin mode)
 
-**Risk:** Irreversible. After this you'll need to re-create your account and re-onboard.
+```sql
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.is_blacklisted(text) TO authenticated, anon;
+```
 
----
+After this, sign out and back in with `ggolo8851@gmail.com` → click "RaidersMatch ▼" top-left → 🛡️ Admin Dashboard button appears.
 
-## 2. AI-powered college matching (Lovable AI re-ranks)
+### 2. Clubs sync — actually load all 80 clubs
 
-**Approach:** Hybrid — keep fast Department-of-Ed Scorecard search for the candidate pool, then have Gemini re-rank the top 30 using the user's full profile.
+Database currently has **0** clubs (sync silently failed). I'll rewrite `supabase/functions/sync-clubs/index.ts` to:
 
-**Backend:** new edge function `ai-rank-colleges` (verify_jwt = true)
-- Input: full user profile (major, GPA, SAT/ACT, APs, clubs, sports, extracurriculars, achievements, interests, vibe answers, address) + array of ~30 candidate colleges with their key stats.
-- Calls Lovable AI Gateway (`google/gemini-3-flash-preview`) with structured tool-calling output:
-  ```
-  { rankings: [{ college_id, ai_fit_score (0-100), reason (1-2 sentences) }] }
-  ```
-- System prompt emphasizes: weigh THIS student's specific clubs/achievements/major-alignment over generic prestige; explain fit in plain English referencing the student's own data.
-- Handle 429/402 by falling back to current rule-based score.
+- Loop through **every tab** in the spreadsheet, not just `sheets[0]`
+- Widen range to `A1:ZZ5000`
+- Add more header aliases ("organization", "title", "club name", etc.)
+- Trim + lowercase-dedupe names so we don't lose rows to the upsert key
+- Log the detected header row + total rows read per tab so we can see exactly why anything was dropped
+- Then I'll invoke it and verify count is 80 (or report which 6 are dropped and why)
 
-**Frontend:** `src/lib/college-api.ts` + `src/components/MatchesPage.tsx`
-- After local `searchColleges()` returns candidates, call `ai-rank-colleges` with top 30.
-- Replace `fitScore` with AI score, sort by it, store `aiReason` on each result.
-- Show the AI reason inside the expanded "More Info" panel as **🤖 Why this fits you:** ...
-- Loading state: "🤖 AI personalizing your matches…"
+### 3. Remove broken ESS logo
 
-**Personalization guarantee:** because the AI prompt receives every input the user filled out, two different students with overlapping major but different clubs/achievements get genuinely different rankings and explanations.
+In `src/components/AppNav.tsx`, remove the `<img src="/ess-logo.png" />` next to "RaidersMatch". Keep the dropdown caret.
 
----
+### 4. Eye icon on every password field
 
-## 3. Fix college name search
+- Create `src/components/ui/password-input.tsx` — Input + Eye/EyeOff toggle (lucide-react, already in project)
+- Replace every `<Input type="password">` in `src/components/AuthPage.tsx` with `<PasswordInput>`:
+  - Sign In → password
+  - Sign Up → password, security code, confirm security code
+  - Forgot Password → security code, new password, confirm new password
 
-**Current bug:** `collegeSearch` in `MatchesPage.tsx` is passed as a filter, but the Scorecard request only loads a single page — searches like "Maryland" miss schools beyond the first page.
+## How admin mode works (so you know what to expect after the fix)
 
-**Fix in `src/lib/college-api.ts`:**
-- When `searchQuery` is non-empty, switch the Scorecard query from `school.name` substring to the API's built-in `school.name=...` operator with `__icontains` and bump `per_page=100`, paginating up to 3 pages (300 results).
-- Keep all other filters (location override, tuition type, etc.) live so the user can still narrow results.
-- Treat search as an OR-with-name: if the search box has text, ignore distance/state restrictions by default but show a "Filters still applied" toggle so the user can re-enable them.
-- Run AI re-rank only on top 30 of the search results.
+- The `admin_whitelist` table currently contains: `ggolo8851@gmail.com`, `soccerstar9471@gmail.com`
+- When anyone signs up, a DB trigger checks the whitelist. Match → they automatically get the `admin` role.
+- On the Home page, click **"RaidersMatch ▼"** in the top-left of the nav. The dropdown shows a **🛡️ Admin Dashboard** button — but only if your account has the `admin` role.
+- Inside the Admin Dashboard there's an "Exit" button to switch back to user view.
+- A regular user can't promote themselves — that would be a security hole. To grant admin to a new email, add it to `admin_whitelist` (I can do that anytime, just tell me which email).
 
----
+After the EXECUTE grant in step 1, signing out and signing back in as `ggolo8851@gmail.com` will make the toggle appear.
 
-## 4. Department of Education API health
+## Files touched
 
-- `API_KEY` in `src/lib/college-api.ts` is currently hardcoded — verify it still returns 200 with a quick fetch in the edge function on deploy. If it's expired, rotate it and store as `COLLEGE_SCORECARD_API_KEY` secret + read it in a thin proxy edge function so we never block on browser CORS.
-- Add explicit error surfacing: when Scorecard returns 0 results or HTTP error, show an inline banner instead of silently returning `[]`.
-
----
-
-## 5. Clubs ↔ Google Sheet daily sync
-
-The connector + `sync-clubs` edge function already exist (see `supabase/functions/sync-clubs/index.ts`). What's missing: the URL is passed in the request body, and there's no schedule.
-
-**Steps:**
-1. Confirm the Google Sheets connector is linked (you provided the sheet URL: `https://docs.google.com/spreadsheets/d/1mCnzMpRY0l1TbBooJl2MVQxCCLrq7dnL/`).
-2. Hardcode that sheet URL inside `sync-clubs` as the default when the body is empty (so cron can call it with no args).
-3. Enable `pg_cron` + `pg_net` extensions, then schedule via `supabase--insert`:
-   ```
-   cron.schedule('sync-clubs-daily', '0 6 * * *', $$ select net.http_post(url:='.../sync-clubs', ...) $$)
-   ```
-4. Profile clubs list source: `src/lib/store.ts` exports `ERHS_CLUBS` as a hardcoded array. Replace it with a runtime fetch from the `clubs` table (cached in React Query or simple `useEffect`). `OnboardingFlow.tsx` already uses `ERHS_CLUBS` — switch to the live list. Same for any portfolio club picker.
-
----
-
-## 6. Career matches — personalize with user data
-
-Currently `getCareerMatches()` in `college-api.ts` runs a static rule engine. Make it AI-driven the same way:
-- New edge function `ai-rank-careers` calls Gemini with the full profile + a curated list of careers.
-- Returns `{ careers: [{ title, fit_score, reason, related_majors }] }` ranked specifically for THIS student.
-- `MatchesPage.tsx` careers tab calls it and renders.
-- Fallback to the existing rule-based list on any AI error.
-
----
-
-## 7. UI cleanups
-
-| Where | Change |
-|---|---|
-| `src/components/AuthPage.tsx` | Remove the `<img src="/ess-logo.png">` next to "RaidersMatch" |
-| `src/components/AppNav.tsx` | Remove "📸 ESS Instagram" item from dropdown; remove "⚙️ Settings" item from dropdown |
-| Instagram link wherever it remains | Replace href with `https://www.instagram.com/erhsstudentsforsuccess/` (no `target` change needed — the "blocked" message is from the previous URL) |
-| `src/components/OnboardingFlow.tsx` AP step | Add a search input above the AP checkbox list (mirrors existing club search) |
-| Same file, clubs step | Already has search; verify works against the new live clubs list |
-| Portfolio AP/club editors | Add the same search filters there |
-
----
-
-## Admin/User mode toggle (already works)
-
-The home dropdown already shows **🛡️ Admin Dashboard** when `isAdmin === true` (`AppNav.tsx` lines 48-53), and `Index.tsx` switches on `adminMode`. After the wipe + your re-signup, the whitelist trigger fires → role granted → button appears. No changes needed beyond confirming after the wipe.
-
----
-
-## Technical details
-
-**Files created:**
-- `supabase/functions/ai-rank-colleges/index.ts`
-- `supabase/functions/ai-rank-careers/index.ts`
-- Migration: enable pg_cron, pg_net, schedule sync-clubs
-
-**Files modified:**
-- `src/lib/college-api.ts` — paginated search, AI re-rank wiring, live clubs fetch helper
-- `src/lib/store.ts` — bump STORAGE_VERSION; deprecate hardcoded `ERHS_CLUBS` (keep as fallback)
-- `src/components/MatchesPage.tsx` — call AI rank, show AI reason, careers from new function
-- `src/components/AuthPage.tsx` — remove logo
-- `src/components/AppNav.tsx` — drop Instagram + Settings menu items
-- `src/components/OnboardingFlow.tsx` — AP search input, clubs from DB
-- `supabase/functions/sync-clubs/index.ts` — default sheet URL constant
-
-**SQL operations:**
-- `delete from auth.users` (cascades) — via `supabase--insert`
-- Enable extensions + cron schedule — via `supabase--insert`
-
-**Order of execution:** wipe users last, after everything else is verified, so you don't lose your test account mid-build.
+- DB migration — grant EXECUTE on `has_role` and `is_blacklisted`
+- `supabase/functions/sync-clubs/index.ts` — multi-tab + better diagnostics
+- `src/components/AppNav.tsx` — remove logo `<img>`
+- `src/components/ui/password-input.tsx` — new component
+- `src/components/AuthPage.tsx` — swap password inputs
