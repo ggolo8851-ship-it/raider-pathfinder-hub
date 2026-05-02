@@ -512,7 +512,7 @@ function ClubsPanel({ adminEmail }: { adminEmail: string }) {
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete club "${name}"?`)) return;
     await supabase.from("clubs").delete().eq("id", id);
-    await audit(adminEmail, "club_delete", name);
+    await audit(adminEmail, "club_delete", name, { id });
     load();
   };
 
@@ -522,7 +522,7 @@ function ClubsPanel({ adminEmail }: { adminEmail: string }) {
       location: row.location, sponsor: row.sponsor, sponsor_email: row.sponsor_email, purpose: row.purpose,
     }).eq("id", row.id);
     if (error) return toast.error(error.message);
-    await audit(adminEmail, "club_update", row.name);
+    await audit(adminEmail, "club_update", row.name, { id: row.id });
     setEditing(null); load(); toast.success("Saved");
   };
 
@@ -531,7 +531,7 @@ function ClubsPanel({ adminEmail }: { adminEmail: string }) {
     if (!name) return;
     const { data, error } = await supabase.from("clubs").insert({ name }).select().single();
     if (error) return toast.error(error.message);
-    await audit(adminEmail, "club_create", name);
+    await audit(adminEmail, "club_create", name, { id: data?.id });
     load(); setEditing(data);
   };
 
