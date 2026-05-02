@@ -184,6 +184,12 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           {c.bestKnownPrograms && c.bestKnownPrograms.length > 0 && (
             <p><b>⭐ Best Known For:</b> {c.bestKnownPrograms.slice(0, 3).join(", ")}</p>
           )}
+          {c.avgSalary10yr != null && (
+            <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
+          )}
+          {c.testPolicy && c.testPolicy !== "unknown" && (
+            <p><b>📝 Test Policy:</b> {c.testPolicy === "required" ? "SAT/ACT Required" : c.testPolicy === "optional" ? "Test-Optional" : "Test-Blind"}</p>
+          )}
           {profile.testOptional && <p className="text-xs text-secondary font-semibold">📝 Classified as test-optional student — SAT not weighted in tier calculation</p>}
           
           {c.demographics && (
