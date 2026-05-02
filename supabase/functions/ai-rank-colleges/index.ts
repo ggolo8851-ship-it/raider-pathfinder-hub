@@ -97,19 +97,19 @@ ${JSON.stringify(trimmed, null, 2)}`;
 
     if (aiResp.status === 429) {
       return new Response(JSON.stringify({ error: "rate_limit", rankings: [] }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (aiResp.status === 402) {
       return new Response(JSON.stringify({ error: "payment_required", rankings: [] }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (!aiResp.ok) {
       const txt = await aiResp.text();
       console.error("AI error", aiResp.status, txt);
       return new Response(JSON.stringify({ error: "ai_error", rankings: [] }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -123,7 +123,7 @@ ${JSON.stringify(trimmed, null, 2)}`;
   } catch (e) {
     console.error("ai-rank-colleges error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "unknown", rankings: [] }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
