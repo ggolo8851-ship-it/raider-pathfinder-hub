@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } from "@/lib/auth";
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword, verifyPasswordReset } from "@/lib/auth";
 import { toast } from "sonner";
 
 interface AuthPageProps {
   onLogin: () => void;
 }
 
-type View = "login" | "signup" | "forgot";
+type View = "login" | "signup" | "forgot" | "reset";
 
 const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [view, setView] = useState<View>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -61,8 +64,23 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     const { error } = await resetPassword(email.trim().toLowerCase());
     setLoading(false);
     if (error) { setError(error.message); return; }
-    toast.success("Password reset email sent. Check your inbox.");
-    setView("login");
+    toast.success("If that email exists, a 6-digit code is on its way.");
+    setView("reset");
+  };
+
+  const handleVerifyReset = async () => {
+    setError("");
+    if (newPassword.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (newPassword !== confirmPassword) { setError("Passwords don't match."); return; }
+    if (!/^\d{6}$/.test(resetCode.trim())) { setError("Enter the 6-digit code from your email."); return; }
+    setLoading(true);
+    const { error } = await verifyPasswordReset(email.trim().toLowerCase(), resetCode.trim(), newPassword);
+    setLoading(false);
+    if (error) { setError(error.message); return; }
+    toast.success("Password updated. Signing you in...");
+    const { error: signInErr } = await signInWithEmail(email.trim().toLowerCase(), newPassword);
+    if (signInErr) { setView("login"); return; }
+    onLogin();
   };
 
   return (
