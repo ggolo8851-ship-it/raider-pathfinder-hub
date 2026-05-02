@@ -109,6 +109,7 @@ const Index = () => {
       {page === "essays" && <EssayPage />}
       {page === "transcripts" && <TranscriptsPage />}
       {page === "graduation" && <GraduationPage />}
+      {page === "faculty" && <FacultyPage />}
     </div>
   );
 };
