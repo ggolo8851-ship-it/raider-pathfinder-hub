@@ -197,6 +197,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           {c.bestKnownPrograms && c.bestKnownPrograms.length > 0 && (
             <p><b>⭐ Best Known For:</b> {c.bestKnownPrograms.slice(0, 3).join(", ")}</p>
           )}
+          {c.institutionalClassification && c.institutionalClassification.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <b>🏛️ Institutional Classification:</b>
+              {c.institutionalClassification.map(tag => (
+                <span key={tag} className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           {c.avgSalary10yr != null && (
             <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
           )}
