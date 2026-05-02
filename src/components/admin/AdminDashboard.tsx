@@ -210,7 +210,7 @@ function UsersPanel() {
 
 function ClubsPanel() {
   const [syncing, setSyncing] = useState(false);
-  const [sheetUrl, setSheetUrl] = useState("https://docs.google.com/spreadsheets/d/1TnM68EMcaq4jZz1icybckIqbkXzYb2hF9FMHTXX4fHM/edit?gid=1444509320#gid=1444509320");
+  const [sheetUrl, setSheetUrl] = useState("https://docs.google.com/spreadsheets/d/1Fe2xlUGni87VhweozuBT1sZ1pdBRDA-QOdgKe0CIKkg/edit?gid=1421045413#gid=1421045413");
   const [clubs, setClubs] = useState<any[]>([]);
   const load = async () => {
     const { data } = await supabase.from("clubs").select("*").order("name");
