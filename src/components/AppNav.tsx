@@ -20,6 +20,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
     { id: "essays", label: "Essays" },
     { id: "transcripts", label: "Counseling" },
     { id: "graduation", label: "Graduation" },
+    { id: "faculty", label: "Faculty" },
   ];
 
   return (
