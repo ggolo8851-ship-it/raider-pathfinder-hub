@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   signInWithEmail, signUpWithEmail, signInWithGoogle,
   resetPasswordWithSecurityCode, setSecurityCode,
 } from "@/lib/auth";
+import {
+  applyRememberMe, getRememberedEmail, setRememberedEmail, clearRememberedEmail,
+  getRememberFlag,
+} from "@/lib/remember-me";
 import { toast } from "sonner";
 
 interface AuthPageProps {
