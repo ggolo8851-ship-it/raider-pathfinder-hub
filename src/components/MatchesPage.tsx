@@ -319,6 +319,41 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   </select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Prestige Class</label>
+                  <select value={classificationFilter} onChange={e => setClassificationFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All Classes</option>
+                    <option value="tier1">Tier 1 (Elite/Ivy+)</option>
+                    <option value="tier2">Tier 2 (Top 50)</option>
+                    <option value="tier3">Tier 3 (Highly Selective/Top Publics)</option>
+                    <option value="tier4">Tier 4 (Strong Regional/Large Publics)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Athletic Division</label>
+                  <select value={athleticFilter} onChange={e => setAthleticFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">Any Division</option>
+                    <option value="d1">NCAA D1</option>
+                    <option value="d2">NCAA D2</option>
+                    <option value="d3">NCAA D3</option>
+                    <option value="naia">NAIA</option>
+                    <option value="none">No Athletics</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Country</label>
+                  <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">US + International</option>
+                    <option value="us">United States Only</option>
+                    <option value="intl">International Only</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
           {tab === "colleges" && tierFilter === "international" && (
