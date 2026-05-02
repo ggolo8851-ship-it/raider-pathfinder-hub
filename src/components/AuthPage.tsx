@@ -1,95 +1,94 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, setSession, getDefaultProfile } from "@/lib/store";
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } from "@/lib/auth";
+import { toast } from "sonner";
 
 interface AuthPageProps {
-  onLogin: (email: string) => void;
+  onLogin: () => void;
 }
 
 type View = "login" | "signup" | "forgot";
 
 const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [view, setView] = useState<View>("login");
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [regName, setRegName] = useState("");
-  const [regUser, setRegUser] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPass, setRegPass] = useState("");
-  const [regPhrase, setRegPhrase] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetPhrase, setResetPhrase] = useState("");
-  const [resetNewPass, setResetNewPass] = useState("");
-  const [resetStep2, setResetStep2] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const handleLogin = () => {
-    setError("");
-    const users = getUsers();
-    const email = loginEmail.toLowerCase().trim();
-    if (users[email] && users[email].pass === loginPass) {
-      setSession(email);
-      onLogin(email);
-    } else {
-      setError("Invalid login credentials.");
+  const handleLogin = async () => {
+    setError(""); setLoading(true);
+    const { error } = await signInWithEmail(email.trim().toLowerCase(), password);
+    setLoading(false);
+    if (error) {
+      if (error.message.toLowerCase().includes("blocked") || error.message.toLowerCase().includes("blacklist")) {
+        setError("This email has been blocked from accessing RaidersMatch.");
+      } else {
+        setError(error.message);
+      }
+      return;
     }
+    onLogin();
   };
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
+    setError(""); setLoading(true);
+    const { error } = await signUpWithEmail(email.trim().toLowerCase(), password, fullName);
+    setLoading(false);
+    if (error) {
+      if (error.message.toLowerCase().includes("blocked")) {
+        setError("This email has been blocked from creating an account.");
+      } else {
+        setError(error.message);
+      }
+      return;
+    }
+    toast.success("Account created — signing you in...");
+    onLogin();
+  };
+
+  const handleGoogle = async () => {
     setError("");
-    const users = getUsers();
-    const email = regEmail.toLowerCase().trim();
-    if (users[email]) { setError("Email already in use."); return; }
-    if (!regUser.trim()) { setError("Please choose a username."); return; }
-    if (!regPass) { setError("Please enter a password."); return; }
-    if (!regPhrase.trim()) { setError("Please create a security phrase for password recovery."); return; }
-    users[email] = {
-      name: regName, username: regUser.trim(), pass: regPass,
-      securityPhrase: regPhrase.trim().toLowerCase(),
-      setupComplete: false, profile: getDefaultProfile(), bookmarks: []
-    };
-    saveUsers(users);
+    const result = await signInWithGoogle();
+    if (result.error) setError(result.error.message);
+    // result.redirected: browser navigates away
+  };
+
+  const handleReset = async () => {
+    setError(""); setLoading(true);
+    const { error } = await resetPassword(email.trim().toLowerCase());
+    setLoading(false);
+    if (error) { setError(error.message); return; }
+    toast.success("Password reset email sent. Check your inbox.");
     setView("login");
-    setError("");
-    setSuccess("Account created! Sign in to continue.");
-  };
-
-  const handleReset = () => {
-    setError("");
-    const users = getUsers();
-    const email = resetEmail.toLowerCase().trim();
-    if (!users[email]) { setError("No account found."); return; }
-    if (!resetStep2) { setResetStep2(true); return; }
-    if (resetPhrase.trim().toLowerCase() === users[email].securityPhrase) {
-      users[email].pass = resetNewPass;
-      saveUsers(users);
-      setResetStep2(false);
-      setView("login");
-      setSuccess("Password reset! Sign in with your new password.");
-    } else {
-      setError("Incorrect security phrase.");
-    }
   };
 
   return (
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
-        <h1 className="text-3xl font-bold text-primary mb-6">RaidersMatch</h1>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <img src="/ess-logo.png" alt="ESS" className="h-10 w-10 object-contain" />
+          <h1 className="text-3xl font-bold text-primary">RaidersMatch</h1>
+        </div>
+
         {error && <p className="text-destructive text-sm mb-4">{error}</p>}
-        {success && <p className="text-green-600 text-sm mb-4">{success}</p>}
 
         {view === "login" && (
           <>
-            <Input placeholder="Email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Input type="password" placeholder="Password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="mb-4"
-              onKeyDown={e => e.key === "Enter" && handleLogin()} autoComplete="current-password" />
-            <Button onClick={handleLogin} className="w-full mb-3">Sign In</Button>
+            <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
+            <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
+              className="mb-4" autoComplete="current-password" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <Button onClick={handleLogin} disabled={loading} className="w-full mb-3">{loading ? "Signing in..." : "Sign In"}</Button>
+            <Button onClick={handleGoogle} variant="outline" className="w-full mb-3">
+              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Continue with Google
+            </Button>
             <p className="text-sm text-muted-foreground">
-              New? <button onClick={() => { setView("signup"); setError(""); setSuccess(""); }} className="text-secondary font-semibold underline">Sign Up</button>
+              New? <button onClick={() => { setView("signup"); setError(""); }} className="text-secondary font-semibold underline">Sign Up</button>
               {" | "}
-              <button onClick={() => { setView("forgot"); setError(""); setSuccess(""); }} className="text-secondary font-semibold underline">Forgot Password?</button>
+              <button onClick={() => { setView("forgot"); setError(""); }} className="text-secondary font-semibold underline">Forgot Password?</button>
             </p>
           </>
         )}
@@ -97,14 +96,12 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
         {view === "signup" && (
           <>
             <h2 className="text-xl font-semibold text-primary mb-4">Join Students for Success</h2>
-            <Input placeholder="Full Name" value={regName} onChange={e => setRegName(e.target.value)} className="mb-3" autoComplete="name" />
-            <Input placeholder="Username" value={regUser} onChange={e => setRegUser(e.target.value)} className="mb-3" autoComplete="username" />
-            <Input placeholder="Email" value={regEmail} onChange={e => setRegEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Input type="password" placeholder="Password" value={regPass} onChange={e => setRegPass(e.target.value)} className="mb-3" autoComplete="new-password" />
-            <Input placeholder="Create a security phrase (for password reset)" value={regPhrase} onChange={e => setRegPhrase(e.target.value)} className="mb-1" />
-            <p className="text-xs text-destructive font-semibold mb-1">⚠️ Save your security phrase. It cannot be recovered.</p>
-            <p className="text-xs text-muted-foreground mb-4">This phrase is unique to you and will be used to reset your password.</p>
-            <Button onClick={handleSignup} className="w-full mb-3">Register</Button>
+            <Input placeholder="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} className="mb-3" autoComplete="name" />
+            <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
+            <Input type="password" placeholder="Password (min 6 chars)" value={password} onChange={e => setPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
+            <p className="text-xs text-muted-foreground mb-4">Your browser may offer to save your password — this is recommended.</p>
+            <Button onClick={handleSignup} disabled={loading} className="w-full mb-3">{loading ? "Creating..." : "Register"}</Button>
+            <Button onClick={handleGoogle} variant="outline" className="w-full mb-3">Continue with Google</Button>
             <button onClick={() => { setView("login"); setError(""); }} className="text-sm text-muted-foreground underline">Back</button>
           </>
         )}
@@ -112,16 +109,10 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
         {view === "forgot" && (
           <>
             <h2 className="text-xl font-semibold text-primary mb-4">Reset Password</h2>
-            <Input placeholder="Your Email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            {resetStep2 && (
-              <>
-                <p className="text-xs text-muted-foreground mb-2">Enter the security phrase you created during sign up.</p>
-                <Input placeholder="Enter your security phrase" value={resetPhrase} onChange={e => setResetPhrase(e.target.value)} className="mb-3" />
-                <Input type="password" placeholder="New Password" value={resetNewPass} onChange={e => setResetNewPass(e.target.value)} className="mb-3" autoComplete="new-password" />
-              </>
-            )}
-            <Button onClick={handleReset} className="w-full mb-3">{resetStep2 ? "Confirm New Password" : "Verify Email"}</Button>
-            <button onClick={() => { setView("login"); setResetStep2(false); setError(""); }} className="text-sm text-muted-foreground underline">Cancel</button>
+            <p className="text-sm text-muted-foreground mb-3">We'll email you a secure reset link.</p>
+            <Input placeholder="Your Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
+            <Button onClick={handleReset} disabled={loading} className="w-full mb-3">{loading ? "Sending..." : "Send Reset Link"}</Button>
+            <button onClick={() => { setView("login"); setError(""); }} className="text-sm text-muted-foreground underline">Cancel</button>
           </>
         )}
       </div>
