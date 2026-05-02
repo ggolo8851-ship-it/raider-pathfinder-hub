@@ -4,9 +4,11 @@ interface AppNavProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   onLogout: () => void;
+  isAdmin?: boolean;
+  onEnterAdmin?: () => void;
 }
 
-const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
+const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: AppNavProps) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const links = [
@@ -16,44 +18,44 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
     { id: "clubs", label: "Clubs" },
     { id: "sat", label: "SAT/ACT" },
     { id: "essays", label: "Essays" },
-    { id: "transcripts", label: "Transcripts & Counseling" },
+    { id: "transcripts", label: "Counseling" },
     { id: "graduation", label: "Graduation" },
   ];
 
   return (
     <nav className="bg-primary border-b-4 border-secondary sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto flex justify-between items-center px-5 py-4">
+      <div className="max-w-6xl mx-auto flex justify-between items-center px-3 sm:px-5 py-3">
         <div className="relative">
           <button onClick={() => setShowMenu(!showMenu)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src="/ess-logo.png" alt="ESS Logo" className="h-9 w-9 object-contain bg-white rounded p-0.5" />
-            <span className="text-primary-foreground text-xl font-bold">RaidersMatch</span>
+            <span className="text-primary-foreground text-lg sm:text-xl font-bold">RaidersMatch</span>
             <span className="text-primary-foreground/60 text-xs">▼</span>
           </button>
           {showMenu && (
-            <div className="absolute top-full left-0 mt-2 bg-card rounded-xl shadow-xl border border-border min-w-48 z-50 overflow-hidden">
+            <div className="absolute top-full left-0 mt-2 bg-card rounded-xl shadow-xl border border-border min-w-56 z-50 overflow-hidden">
               <button onClick={() => { onNavigate("home"); setShowMenu(false); }}
-                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors border-b border-border">
-                🏠 Home
-              </button>
+                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">🏠 Home</button>
               <button onClick={() => { onNavigate("graduation"); setShowMenu(false); }}
-                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors border-b border-border">
-                🎓 Graduation Requirements
-              </button>
+                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">🎓 Graduation Requirements</button>
+              <a href="https://www.niche.com/colleges/search/best-colleges/" target="_blank" rel="noopener noreferrer"
+                className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">🏆 Niche Top 100 Colleges</a>
               <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
-                className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors border-b border-border">
-                📸 ESS Instagram
-              </a>
-              <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
-                className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors">
-                🏫 ERHS Website
-              </a>
+                className="block px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">📸 ESS Instagram</a>
+              <button onClick={() => { onNavigate("settings"); setShowMenu(false); }}
+                className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/50 border-b border-border">⚙️ Settings</button>
+              {isAdmin && onEnterAdmin && (
+                <button onClick={() => { onEnterAdmin(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold text-secondary bg-secondary/10 hover:bg-secondary/20">
+                  🛡️ Admin Dashboard
+                </button>
+              )}
             </div>
           )}
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap justify-end">
           {links.map(l => (
             <button key={l.id} onClick={() => onNavigate(l.id)}
-              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs border transition-colors ${
                 currentPage === l.id
                   ? "bg-secondary text-secondary-foreground border-secondary font-semibold"
                   : "border-secondary text-primary-foreground hover:bg-secondary/20"
@@ -62,7 +64,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout }: AppNavProps) => {
             </button>
           ))}
           <button onClick={onLogout}
-            className="px-3 py-1.5 rounded-full text-xs border border-destructive text-destructive hover:bg-destructive/20 transition-colors">
+            className="px-2.5 py-1 rounded-full text-[11px] sm:text-xs border border-destructive text-destructive hover:bg-destructive/20">
             Sign Out
           </button>
         </div>
