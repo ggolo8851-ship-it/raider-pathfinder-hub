@@ -298,6 +298,14 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
               </div>
             </div>
           )}
+          {tab === "colleges" && tierFilter === "international" && (
+            <div className="bg-secondary/10 border-l-4 border-secondary rounded-r-lg p-3 text-sm text-foreground mb-4">
+              🌍 International schools aren't in the US College Scorecard database. Try these directories:
+              {" "}<a className="underline text-primary" href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer">QS World Rankings ↗</a>,
+              {" "}<a className="underline text-primary" href="https://www.timeshighereducation.com/world-university-rankings" target="_blank" rel="noopener noreferrer">THE Rankings ↗</a>,
+              {" "}<a className="underline text-primary" href="https://www.studyportals.com/" target="_blank" rel="noopener noreferrer">Studyportals ↗</a>.
+            </div>
+          )}
           {displayLoading ? (
             <p className="text-muted-foreground text-center py-8">Scanning college databases...</p>
           ) : displayColleges.length === 0 ? (
