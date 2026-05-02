@@ -27,7 +27,7 @@ function extractSheetId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1mCnzMpRY0l1TbBooJl2MVQxCCLrq7dnL/edit?gid=1421045413";
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Fe2xlUGni87VhweozuBT1sZ1pdBRDA-QOdgKe0CIKkg/edit?gid=1421045413";
 
 interface ClubRecord {
   name: string;
