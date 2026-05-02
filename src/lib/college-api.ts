@@ -103,6 +103,9 @@ export interface CollegeResult {
   isInternational?: boolean;        // true if from international_colleges table
   chancePct?: number | null;        // 0-100 estimated admit chance for this user
   classification?: "tier1" | "tier2" | "tier3" | "tier4";
+  womenOnly?: boolean;              // Women's college flag
+  menOnly?: boolean;
+  institutionalClassification?: string[]; // ["HBCU","HSI","AANAPISI","TCU","ANNH","NANTI","PBI","Women's College","PWI"]
   demographics?: {
     white: number;
     black: number;
