@@ -13,6 +13,7 @@ import SATPage from "@/components/SATPage";
 import TranscriptsPage from "@/components/TranscriptsPage";
 import EssayPage from "@/components/EssayPage";
 import GraduationPage from "@/components/GraduationPage";
+import FacultyPage from "@/components/FacultyPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 
 const Index = () => {
