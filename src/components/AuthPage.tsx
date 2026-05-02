@@ -127,10 +127,28 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
         {view === "forgot" && (
           <>
             <h2 className="text-xl font-semibold text-primary mb-4">Reset Password</h2>
-            <p className="text-sm text-muted-foreground mb-3">We'll email you a secure reset link.</p>
+            <p className="text-sm text-muted-foreground mb-3">We'll email you a 6-digit code to reset your password.</p>
             <Input placeholder="Your Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Button onClick={handleReset} disabled={loading} className="w-full mb-3">{loading ? "Sending..." : "Send Reset Link"}</Button>
+            <Button onClick={handleReset} disabled={loading} className="w-full mb-3">{loading ? "Sending..." : "Send Reset Code"}</Button>
+            <button onClick={() => { setView("reset"); setError(""); }} className="text-sm text-secondary underline block mb-2">I already have a code</button>
             <button onClick={() => { setView("login"); setError(""); }} className="text-sm text-muted-foreground underline">Cancel</button>
+          </>
+        )}
+
+        {view === "reset" && (
+          <>
+            <h2 className="text-xl font-semibold text-primary mb-4">Enter Reset Code</h2>
+            <p className="text-sm text-muted-foreground mb-3">Enter the 6-digit code sent to your email and choose a new password. Code expires in 15 minutes.</p>
+            <Input placeholder="Your Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
+            <Input placeholder="6-digit code" value={resetCode} onChange={e => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="mb-3 text-center tracking-widest text-lg" inputMode="numeric" maxLength={6} />
+            <Input type="password" placeholder="New password (min 6 chars)" value={newPassword}
+              onChange={e => setNewPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
+            <Input type="password" placeholder="Confirm new password" value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)} className="mb-3" autoComplete="new-password"
+              onKeyDown={e => e.key === "Enter" && handleVerifyReset()} />
+            <Button onClick={handleVerifyReset} disabled={loading} className="w-full mb-3">{loading ? "Updating..." : "Reset Password"}</Button>
+            <button onClick={() => { setView("forgot"); setError(""); }} className="text-sm text-muted-foreground underline">Back</button>
           </>
         )}
       </div>
