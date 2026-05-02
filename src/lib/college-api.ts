@@ -487,10 +487,14 @@ export async function searchColleges(
   const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
 
   const buildUrl = (page: number, perPage: number) => {
-    let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=${perPage}&page=${page}&sort=latest.admissions.admission_rate.overall:asc`;
-    if (filters.stateFilter === "maryland") url += "&school.state=MD";
+    // When searching by name, drop the bachelor's-only restriction so specialty/grad-heavy
+    // schools surface; when browsing, keep predominant=3 to focus on undergrad institutions.
+    const predominant = hasSearchQuery ? "" : "&school.degrees_awarded.predominant=3";
+    let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1${predominant}&fields=${fields}&per_page=${perPage}&page=${page}`;
+    // Sort by selectivity only when not searching; when searching, let API relevance + our client-side rank decide.
+    if (!hasSearchQuery) url += `&sort=latest.admissions.admission_rate.overall:asc`;
+    if (filters.stateFilter === "maryland" && !hasSearchQuery) url += "&school.state=MD";
     if (hasSearchQuery) {
-      // school.search is fuzzy and matches mid-word; school.name only matches exact starts.
       url += `&school.search=${encodeURIComponent(filters.searchQuery!.trim())}`;
     }
     return url;
