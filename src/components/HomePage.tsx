@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
-import EmailSubscriptionBox from "@/components/EmailSubscriptionBox";
+
 
 interface HomePageProps {
   username: string;
