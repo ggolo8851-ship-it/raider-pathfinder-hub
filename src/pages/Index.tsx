@@ -15,6 +15,8 @@ import EssayPage from "@/components/EssayPage";
 import GraduationPage from "@/components/GraduationPage";
 import FacultyPage from "@/components/FacultyPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import CustomTabPage from "@/components/CustomTabPage";
+import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
 
 const Index = () => {
   const { session, user: authUser, isAdmin, isBlocked, loading } = useAuth();
