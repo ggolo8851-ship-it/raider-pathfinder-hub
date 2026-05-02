@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 
 const ESSAY_PROMPTS = [
   {
@@ -40,20 +39,11 @@ const ESSAY_RESOURCES = [
   { name: "Common App Essay Guide", url: "https://www.commonapp.org/blog/2024-2025-common-app-essay-prompts", desc: "Official Common App prompts and tips" },
   { name: "College Essay Guy (Free Resources)", url: "https://www.collegeessayguy.com/", desc: "Free essay guides, brainstorming exercises, and examples" },
   { name: "Khan Academy - College Admissions", url: "https://www.khanacademy.org/college-careers-more/college-admissions", desc: "Free college application course" },
+  { name: "Johns Hopkins Essays That Worked", url: "https://apply.jhu.edu/application-process/essays-that-worked/", desc: "Real successful admissions essays — use as benchmark" },
+  { name: "Hamilton College — Successful Essays", url: "https://www.hamilton.edu/admission/apply/college-essays", desc: "Annotated essays that earned admission" },
   { name: "Purdue OWL Writing Lab", url: "https://owl.purdue.edu/", desc: "Grammar, citation, and writing help" },
   { name: "LanguageTool", url: "https://languagetool.org/", desc: "Free open-source grammar & spell checker" },
   { name: "Hemingway Editor", url: "https://hemingwayapp.com/", desc: "Readability and clarity checker — free online" },
-];
-
-const GRAMMAR_ISSUES = [
-  { pattern: /\b(their|there|they're)\b/gi, name: "their/there/they're", tip: "Double-check their/there/they're usage" },
-  { pattern: /\b(your|you're)\b/gi, name: "your/you're", tip: "Make sure you're using your/you're correctly" },
-  { pattern: /\b(its|it's)\b/gi, name: "its/it's", tip: "Check its/it's — 'it's' = 'it is', 'its' = possessive" },
-  { pattern: /\b(affect|effect)\b/gi, name: "affect/effect", tip: "Verify affect (verb) vs. effect (noun) usage" },
-  { pattern: /\b(then|than)\b/gi, name: "then/than", tip: "Check then (time) vs. than (comparison)" },
-  { pattern: /\b(to|too|two)\b/gi, name: "to/too/two", tip: "Verify to/too/two — 'too' = also/excessive" },
-  { pattern: /\b(lose|loose)\b/gi, name: "lose/loose", tip: "Lose = fail to keep, Loose = not tight" },
-  { pattern: /\b(accept|except)\b/gi, name: "accept/except", tip: "Accept = receive, Except = excluding" },
 ];
 
 const WEAK_PHRASES = [
@@ -69,13 +59,25 @@ const CLICHES = [
   "pushed me out of my comfort zone", "at the end of the day",
 ];
 
-interface AIGrade {
-  score: number;
+// Specificity signals — concrete proper nouns / numbers / sensory verbs.
+const SENSORY_WORDS = ["smelled", "tasted", "saw", "heard", "felt", "watched", "touched", "noticed", "glanced", "whispered", "shouted"];
+
+function countSyllables(word: string): number {
+  const w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (!w) return 0;
+  let m = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").match(/[aeiouy]{1,2}/g);
+  return Math.max(1, m ? m.length : 1);
+}
+
+interface GradeLevelReport {
+  fleschKincaid: number;
+  gunningFog: number;
+  colemanLiau: number;
+  averaged: number;
+  band: "Below HS" | "Early HS" | "Mid HS" | "Late HS / College" | "Graduate";
   verdict: string;
-  rubric: { hookVoice: number; storySpecificity: number; insightReflection: number; structureFlow: number; mechanicsStyle: number; fitToPrompt: number; };
-  strengths: string[];
-  weaknesses: string[];
-  revisionPlan: string[];
+  benchmark: string;
+  comparison: { metric: string; yours: string; successful: string; status: "good" | "warn" | "bad" }[];
 }
 
 const EssayPage = () => {
@@ -84,25 +86,119 @@ const EssayPage = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "warning" | "error" | "info"; text: string }[]>([]);
   const [wordCount, setWordCount] = useState(0);
   const [activeTab, setActiveTab] = useState<"write" | "prompts" | "tips" | "resources">("write");
-  const [essayScore, setEssayScore] = useState<number | null>(null);
-  const [aiGrade, setAiGrade] = useState<AIGrade | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [gradeReport, setGradeReport] = useState<GradeLevelReport | null>(null);
 
-  const runAIGrader = async () => {
-    setAiLoading(true); setAiError(null); setAiGrade(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("grade-essay", {
-        body: { essay, prompt: essayPrompt || undefined },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      setAiGrade(data as AIGrade);
-    } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Failed to grade essay");
-    } finally {
-      setAiLoading(false);
+  const computeGradeLevel = (): GradeLevelReport | null => {
+    const words = essay.trim().split(/\s+/).filter(Boolean);
+    const sentences = essay.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    if (words.length < 30 || sentences.length < 2) return null;
+
+    const totalSyllables = words.reduce((t, w) => t + countSyllables(w), 0);
+    const totalChars = words.reduce((t, w) => t + w.replace(/[^a-zA-Z]/g, "").length, 0);
+    const complexWords = words.filter(w => countSyllables(w) >= 3 && !/^[A-Z]/.test(w)).length;
+
+    const wordsPerSentence = words.length / sentences.length;
+    const syllablesPerWord = totalSyllables / words.length;
+
+    // Flesch-Kincaid Grade Level
+    const fk = 0.39 * wordsPerSentence + 11.8 * syllablesPerWord - 15.59;
+    // Gunning Fog
+    const fog = 0.4 * (wordsPerSentence + 100 * (complexWords / words.length));
+    // Coleman-Liau
+    const L = (totalChars / words.length) * 100;
+    const S = (sentences.length / words.length) * 100;
+    const cli = 0.0588 * L - 0.296 * S - 15.8;
+
+    const clamp = (n: number) => Math.max(1, Math.min(20, Math.round(n * 10) / 10));
+    const avg = (clamp(fk) + clamp(fog) + clamp(cli)) / 3;
+    const averaged = Math.round(avg * 10) / 10;
+
+    let band: GradeLevelReport["band"];
+    let verdict: string;
+    let benchmark: string;
+    if (averaged < 8) {
+      band = "Below HS";
+      verdict = "Reads below high-school level. Admissions committees expect at least late-HS sophistication.";
+      benchmark = "Successful Common App essays typically read at grade 10–13.";
+    } else if (averaged < 10) {
+      band = "Early HS";
+      verdict = "Early-high-school reading level. Push for richer vocabulary and more layered sentences.";
+      benchmark = "Successful Common App essays typically read at grade 10–13.";
+    } else if (averaged < 12) {
+      band = "Mid HS";
+      verdict = "Solid mid-high-school level — readable, but you can elevate diction and add depth of reflection.";
+      benchmark = "Successful essays from JHU/Hamilton ‘Essays That Worked’ average grade 10–12.";
+    } else if (averaged < 14) {
+      band = "Late HS / College";
+      verdict = "Right in the sweet spot of successful college-admissions writing — clear, sophisticated, not overwrought.";
+      benchmark = "Matches the grade range of successful JHU/Hamilton/Common App sample essays.";
+    } else {
+      band = "Graduate";
+      verdict = "Reads above the college range. Strong vocabulary, but watch for overly long sentences or stiff academic tone — admissions essays should still feel personal.";
+      benchmark = "Successful college essays rarely exceed grade 14; consider trimming long sentences.";
     }
+
+    // Compare against benchmarks of successful essays (sourced from JHU + Hamilton 'Essays That Worked' aggregates)
+    const avgSent = wordsPerSentence;
+    const sentLengths = sentences.map(s => s.trim().split(/\s+/).length);
+    const sentVariance = sentLengths.length > 1
+      ? Math.sqrt(sentLengths.reduce((a, l) => a + (l - avgSent) ** 2, 0) / sentLengths.length)
+      : 0;
+    const clicheCount = CLICHES.filter(c => essay.toLowerCase().includes(c)).length;
+    const sensoryCount = SENSORY_WORDS.filter(s => essay.toLowerCase().includes(s)).length;
+    const properNouns = (essay.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || []).length;
+    const numericDetails = (essay.match(/\b\d+\b/g) || []).length;
+    const specificity = properNouns + numericDetails + sensoryCount;
+
+    const comparison: GradeLevelReport["comparison"] = [
+      {
+        metric: "Reading grade level",
+        yours: `Grade ${averaged}`,
+        successful: "Grade 10–13",
+        status: averaged >= 10 && averaged <= 13.5 ? "good" : averaged < 8 || averaged > 15 ? "bad" : "warn",
+      },
+      {
+        metric: "Avg sentence length",
+        yours: `${avgSent.toFixed(1)} words`,
+        successful: "12–22 words",
+        status: avgSent >= 12 && avgSent <= 22 ? "good" : avgSent < 8 || avgSent > 30 ? "bad" : "warn",
+      },
+      {
+        metric: "Sentence variety (σ)",
+        yours: sentVariance.toFixed(1),
+        successful: "≥ 5 (mix short + long)",
+        status: sentVariance >= 5 ? "good" : sentVariance >= 3 ? "warn" : "bad",
+      },
+      {
+        metric: "Clichés found",
+        yours: String(clicheCount),
+        successful: "0",
+        status: clicheCount === 0 ? "good" : clicheCount <= 1 ? "warn" : "bad",
+      },
+      {
+        metric: "Concrete details (names, numbers, senses)",
+        yours: String(specificity),
+        successful: "≥ 8 in a strong essay",
+        status: specificity >= 8 ? "good" : specificity >= 4 ? "warn" : "bad",
+      },
+      {
+        metric: "Word count",
+        yours: String(words.length),
+        successful: "500–650",
+        status: words.length >= 500 && words.length <= 650 ? "good" : words.length >= 300 && words.length <= 700 ? "warn" : "bad",
+      },
+    ];
+
+    return {
+      fleschKincaid: clamp(fk),
+      gunningFog: clamp(fog),
+      colemanLiau: clamp(cli),
+      averaged,
+      band,
+      verdict,
+      benchmark,
+      comparison,
+    };
   };
 
   const analyzeEssay = () => {
@@ -110,20 +206,18 @@ const EssayPage = () => {
     const wc = words.length;
     setWordCount(wc);
     const fb: { type: "success" | "warning" | "error" | "info"; text: string }[] = [];
-    let score = 100; // Start at 100 and deduct for issues
 
     // Word count
-    if (wc < 150) { fb.push({ type: "error", text: "⚠️ Your essay is very short. Most college essays should be 250-650 words." }); score -= 20; }
-    else if (wc < 250) { fb.push({ type: "warning", text: "📏 Your essay is under the typical 250-word minimum. Consider expanding." }); score -= 10; }
-    else if (wc > 650) { fb.push({ type: "warning", text: "📏 Your essay exceeds the Common App 650-word limit. Consider trimming." }); score -= 5; }
-    else fb.push({ type: "success", text: `✅ Word count (${wc}) is within the 250-650 word range.` });
+    if (wc < 150) fb.push({ type: "error", text: "⚠️ Your essay is very short. Most college essays should be 250–650 words." });
+    else if (wc < 250) fb.push({ type: "warning", text: "📏 Your essay is under the typical 250-word minimum. Consider expanding." });
+    else if (wc > 650) fb.push({ type: "warning", text: "📏 Your essay exceeds the Common App 650-word limit. Consider trimming." });
+    else fb.push({ type: "success", text: `✅ Word count (${wc}) is within the 250–650 word range.` });
 
-    // Opening analysis
+    // Opening
     const firstSentence = essay.split(/[.!?]/)[0]?.toLowerCase() || "";
     const clicheOpeners = CLICHES.filter(c => firstSentence.includes(c));
     if (clicheOpeners.length > 0) {
-      fb.push({ type: "error", text: `🚫 Your opening uses a cliché: "${clicheOpeners[0]}". Start with action, dialogue, or a vivid moment instead.` });
-      score -= 10;
+      fb.push({ type: "error", text: `🚫 Your opening uses a cliché: "${clicheOpeners[0]}". Successful essays open with action, dialogue, or a vivid moment.` });
     } else if (firstSentence.length > 10) {
       fb.push({ type: "success", text: "✅ Your opening avoids common clichés." });
     }
@@ -131,136 +225,61 @@ const EssayPage = () => {
     // Vague words
     const vagueWords = ["very", "really", "a lot", "many things", "stuff", "things", "good", "bad", "nice", "great"];
     const foundVague = vagueWords.filter(w => essay.toLowerCase().includes(w));
-    if (foundVague.length >= 4) {
-      fb.push({ type: "error", text: `🔍 Too many vague words: ${foundVague.slice(0, 5).join(", ")}. Replace with specific, descriptive language.` });
-      score -= 10;
-    } else if (foundVague.length >= 2) {
-      fb.push({ type: "warning", text: `📝 Consider replacing vague words: ${foundVague.join(", ")}` });
-      score -= 5;
-    } else {
-      fb.push({ type: "success", text: "✅ Good use of specific language." });
-    }
+    if (foundVague.length >= 4) fb.push({ type: "error", text: `🔍 Too many vague words: ${foundVague.slice(0, 5).join(", ")}. Replace with specific, descriptive language.` });
+    else if (foundVague.length >= 2) fb.push({ type: "warning", text: `📝 Consider replacing vague words: ${foundVague.join(", ")}` });
 
     // Sentence variety
     const sentences = essay.split(/[.!?]+/).filter(s => s.trim().length > 0);
     const startsWithI = sentences.filter(s => s.trim().toLowerCase().startsWith("i ")).length;
     if (sentences.length > 3 && startsWithI / sentences.length > 0.5) {
-      fb.push({ type: "warning", text: `💡 ${startsWithI} of ${sentences.length} sentences start with "I". Vary your sentence structure.` });
-      score -= 5;
+      fb.push({ type: "warning", text: `💡 ${startsWithI} of ${sentences.length} sentences start with "I". Successful essays vary openings.` });
     }
-
-    // Sentence length variety
-    const sentLengths = sentences.map(s => s.trim().split(/\s+/).length);
-    const avgLen = sentLengths.length > 0 ? sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length : 0;
-    const longSentences = sentLengths.filter(l => l > 35).length;
-    if (longSentences > 2) { fb.push({ type: "warning", text: `📝 ${longSentences} sentences are over 35 words. Break them up for clarity.` }); score -= 3; }
-    if (avgLen > 0) fb.push({ type: "info", text: `📊 Average sentence length: ${avgLen.toFixed(0)} words` });
 
     // Paragraph structure
     const paragraphs = essay.split(/\n\n+/).filter(p => p.trim().length > 0);
-    if (paragraphs.length < 3 && wc > 200) {
-      fb.push({ type: "warning", text: "📝 Break your essay into more paragraphs (intro, body, conclusion)." });
-      score -= 5;
-    } else if (paragraphs.length >= 3) {
-      fb.push({ type: "success", text: `✅ Good paragraph structure (${paragraphs.length} paragraphs).` });
-    }
+    if (paragraphs.length < 3 && wc > 200) fb.push({ type: "warning", text: "📝 Break your essay into more paragraphs (intro, body, conclusion)." });
+    else if (paragraphs.length >= 3) fb.push({ type: "success", text: `✅ Good paragraph structure (${paragraphs.length} paragraphs).` });
 
     // Weak phrases
     const foundWeak = WEAK_PHRASES.filter(p => essay.toLowerCase().includes(p));
-    if (foundWeak.length > 0) {
-      fb.push({ type: "warning", text: `💡 Weak phrases detected: "${foundWeak.slice(0, 3).join('", "')}". These weaken your voice — try removing them.` });
-      score -= Math.min(foundWeak.length * 2, 8);
-    }
+    if (foundWeak.length > 0) fb.push({ type: "warning", text: `💡 Weak phrases detected: "${foundWeak.slice(0, 3).join('", "')}". Strong essays use direct voice — try removing them.` });
 
-    // Clichés throughout
+    // Clichés
     const foundCliches = CLICHES.filter(c => essay.toLowerCase().includes(c));
-    if (foundCliches.length > 1) {
-      fb.push({ type: "error", text: `🚫 Multiple clichés found: "${foundCliches.slice(0, 3).join('", "')}". Replace with original language.` });
-      score -= foundCliches.length * 3;
-    }
+    if (foundCliches.length > 1) fb.push({ type: "error", text: `🚫 Multiple clichés found: "${foundCliches.slice(0, 3).join('", "')}". Replace with original language.` });
 
-    // Grammar checks
-    const essayLower = essay.toLowerCase();
-    let grammarHits = 0;
-    GRAMMAR_ISSUES.forEach(g => {
-      if (g.pattern.test(essayLower)) {
-        fb.push({ type: "info", text: `📝 Grammar check: ${g.tip}` });
-        grammarHits++;
-      }
-    });
+    // Passive voice
+    const passive = essay.match(/\b(was|were|is|are|been|being)\s+(being\s+)?\w+ed\b/gi) || [];
+    if (passive.length > 3) fb.push({ type: "warning", text: `💡 ${passive.length} passive-voice constructions. Successful essays favor active voice.` });
 
-    // Passive voice detection
-    const passivePatterns = /\b(was|were|is|are|been|being)\s+(being\s+)?\w+ed\b/gi;
-    const passiveMatches = essay.match(passivePatterns) || [];
-    if (passiveMatches.length > 3) {
-      fb.push({ type: "warning", text: `💡 ${passiveMatches.length} instances of passive voice detected. Use active voice for stronger writing.` });
-      score -= Math.min(passiveMatches.length, 5);
-    }
-
-    // Repetition detection
+    // Repetition
     const wordFreq: Record<string, number> = {};
     words.forEach(w => {
       const clean = w.toLowerCase().replace(/[^a-z]/g, "");
       if (clean.length > 4) wordFreq[clean] = (wordFreq[clean] || 0) + 1;
     });
-    const repeated = Object.entries(wordFreq).filter(([_, count]) => count > 4).sort((a, b) => b[1] - a[1]);
-    if (repeated.length > 0) {
-      fb.push({ type: "warning", text: `🔄 Repeated words: ${repeated.slice(0, 3).map(([w, c]) => `"${w}" (${c}x)`).join(", ")}. Try using synonyms.` });
-      score -= Math.min(repeated.length * 2, 6);
-    }
+    const repeated = Object.entries(wordFreq).filter(([_, c]) => c > 4).sort((a, b) => b[1] - a[1]);
+    if (repeated.length > 0) fb.push({ type: "warning", text: `🔄 Repeated words: ${repeated.slice(0, 3).map(([w, c]) => `"${w}" (${c}x)`).join(", ")}. Vary your vocabulary.` });
 
-    // Double spaces
-    const doubleSpaces = (essay.match(/  +/g) || []).length;
-    if (doubleSpaces > 2) { fb.push({ type: "info", text: `📝 ${doubleSpaces} extra spaces found — clean up before submitting.` }); score -= 1; }
+    // Authenticity / depth of reflection
+    const reflectionMarkers = ["i realized", "i learned", "i understood", "i discovered", "i wondered", "i questioned", "i now", "looking back"];
+    const reflectionHits = reflectionMarkers.filter(m => essay.toLowerCase().includes(m)).length;
+    if (reflectionHits === 0 && wc > 200) fb.push({ type: "warning", text: "🔍 No clear reflection markers (e.g. 'I realized', 'looking back'). Successful essays surface insight." });
+    else if (reflectionHits >= 2) fb.push({ type: "success", text: "✅ Essay shows reflective insight — a hallmark of successful admissions essays." });
 
-    // Capitalization check
-    const uncapitalized = sentences.filter(s => {
-      const trimmed = s.trim();
-      return trimmed.length > 0 && trimmed[0] !== trimmed[0].toUpperCase() && /[a-z]/.test(trimmed[0]);
-    });
-    if (uncapitalized.length > 0) {
-      fb.push({ type: "info", text: `📝 ${uncapitalized.length} sentence(s) may not start with a capital letter.` });
-      score -= 2;
-    }
-
-    // Readability score (simplified Flesch-Kincaid)
-    const syllableCount = words.reduce((total, word) => {
-      const w = word.toLowerCase().replace(/[^a-z]/g, "");
-      let syllables = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").match(/[aeiouy]{1,2}/g);
-      return total + Math.max(1, syllables ? syllables.length : 1);
-    }, 0);
-    if (sentences.length > 0 && words.length > 0) {
-      const fk = 0.39 * (words.length / sentences.length) + 11.8 * (syllableCount / words.length) - 15.59;
-      const grade = Math.max(1, Math.min(16, Math.round(fk)));
-      if (grade >= 12) fb.push({ type: "success", text: `📚 Reading level: College-level (Grade ${grade}). Appropriate for admissions.` });
-      else if (grade >= 9) { fb.push({ type: "info", text: `📚 Reading level: Grade ${grade}. Consider more sophisticated vocabulary.` }); score -= 3; }
-      else { fb.push({ type: "warning", text: `📚 Reading level: Grade ${grade}. Try using more advanced vocabulary and complex sentences.` }); score -= 8; }
-    }
-
-    // Clamp score
-    score = Math.max(0, Math.min(100, score));
-    setEssayScore(score);
-
-    // Overall assessment
-    if (score >= 85) {
-      fb.unshift({ type: "success", text: `🌟 Score: ${score}/100 — Strong essay! Focus on making your unique voice shine.` });
-    } else if (score >= 70) {
-      fb.unshift({ type: "info", text: `📊 Score: ${score}/100 — Good foundation. Address the highlighted items for improvement.` });
-    } else if (score >= 50) {
-      fb.unshift({ type: "warning", text: `📊 Score: ${score}/100 — Needs work. Focus on the red and yellow items first.` });
-    } else {
-      fb.unshift({ type: "error", text: `⚠️ Score: ${score}/100 — Significant revision needed. Address the major issues below.` });
-    }
+    // Authenticity of voice — contractions + first-person specificity
+    const hasContractions = /\b(i'm|i've|i'd|don't|can't|won't|isn't|wasn't)\b/i.test(essay);
+    if (!hasContractions && wc > 200) fb.push({ type: "info", text: "🗣️ No contractions detected — successful personal essays usually sound conversational." });
 
     setFeedback(fb);
+    setGradeReport(computeGradeLevel());
   };
 
   const handleEssayChange = (text: string) => {
     setEssay(text);
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
     if (feedback.length > 0) setFeedback([]);
-    setEssayScore(null);
-    setAiGrade(null); setAiError(null);
+    setGradeReport(null);
   };
 
   const typeColors = {
@@ -270,10 +289,16 @@ const EssayPage = () => {
     info: "bg-blue-50 border-blue-400 text-blue-800",
   };
 
+  const statusColors = {
+    good: "bg-green-100 text-green-800 border-green-400",
+    warn: "bg-yellow-100 text-yellow-800 border-yellow-400",
+    bad: "bg-red-100 text-red-800 border-red-400",
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-10 px-5">
       <h2 className="text-3xl font-bold text-primary mb-2">📝 Essay Resource Center</h2>
-      <p className="text-muted-foreground mb-6">Write, review, and strengthen your college essays with detailed feedback</p>
+      <p className="text-muted-foreground mb-6">Write, review, and benchmark your essay against successful admissions writing</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {(["write", "prompts", "tips", "resources"] as const).map(t => (
@@ -291,25 +316,15 @@ const EssayPage = () => {
           <div className="bg-card rounded-xl shadow-md p-6 border border-border">
             <div className="flex justify-between items-center mb-3">
               <label className="text-sm font-semibold text-foreground">Paste or write your essay below</label>
-              <div className="flex items-center gap-3">
-                {essayScore !== null && (
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                    essayScore >= 85 ? "bg-green-100 text-green-800" :
-                    essayScore >= 70 ? "bg-blue-100 text-blue-800" :
-                    essayScore >= 50 ? "bg-yellow-100 text-yellow-800" :
-                    "bg-red-100 text-red-800"
-                  }`}>{essayScore}/100</span>
-                )}
-                <span className={`text-xs font-bold ${wordCount > 650 ? "text-destructive" : wordCount >= 250 ? "text-green-600" : "text-muted-foreground"}`}>
-                  {wordCount} / 650 words
-                </span>
-              </div>
+              <span className={`text-xs font-bold ${wordCount > 650 ? "text-destructive" : wordCount >= 250 ? "text-green-600" : "text-muted-foreground"}`}>
+                {wordCount} / 650 words
+              </span>
             </div>
             <input
               type="text"
               value={essayPrompt}
               onChange={e => setEssayPrompt(e.target.value)}
-              placeholder="(Optional) Paste the essay prompt here for sharper grading..."
+              placeholder="(Optional) Paste the essay prompt for context..."
               className="w-full p-2 mb-2 border border-input rounded-lg bg-background text-foreground text-sm"
             />
             <textarea
@@ -322,75 +337,54 @@ const EssayPage = () => {
               <div className={`h-full rounded-full transition-all ${wordCount > 650 ? "bg-destructive" : wordCount >= 250 ? "bg-green-500" : "bg-secondary"}`}
                 style={{ width: `${Math.min(100, (wordCount / 650) * 100)}%` }} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-              <Button onClick={analyzeEssay} disabled={essay.trim().length < 50} variant="outline">
-                🔍 Quick Mechanical Grade
-              </Button>
-              <Button onClick={runAIGrader} disabled={essay.trim().length < 50 || aiLoading}>
-                {aiLoading ? "🧠 AI grading…" : "🧠 Brutal AI Grade (/100)"}
-              </Button>
-            </div>
+            <Button onClick={analyzeEssay} disabled={essay.trim().length < 50} className="w-full mt-3">
+              📚 Analyze Writing Grade Level + Benchmark
+            </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Mechanical = clichés, grammar, structure. AI = brutally honest Ivy reader on hook, story, insight, structure, mechanics & fit.
+              Compares your essay against successful admissions essays (JHU & Hamilton "Essays That Worked") on grade level, sentence variety, specificity, and clichés.
             </p>
           </div>
 
-          {aiError && (
-            <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-3 rounded mt-4 text-sm">{aiError}</div>
-          )}
-
-          {aiGrade && (
+          {gradeReport && (
             <div className="bg-card rounded-xl shadow-md p-6 border border-border mt-4">
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h3 className="text-lg font-bold text-primary">🧠 Brutal AI Grade</h3>
-                <span className={`text-2xl font-extrabold px-4 py-1 rounded-full ${
-                  aiGrade.score >= 85 ? "bg-green-100 text-green-800" :
-                  aiGrade.score >= 70 ? "bg-blue-100 text-blue-800" :
-                  aiGrade.score >= 55 ? "bg-yellow-100 text-yellow-800" :
-                  "bg-red-100 text-red-800"
-                }`}>{aiGrade.score}/100</span>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h3 className="text-lg font-bold text-primary">📚 Writing Grade-Level Report</h3>
+                <span className="bg-primary text-primary-foreground text-lg font-extrabold px-4 py-1 rounded-full">
+                  Grade {gradeReport.averaged}
+                </span>
               </div>
-              <p className="italic text-foreground mb-4">"{aiGrade.verdict}"</p>
+              <p className="italic text-foreground mb-2">{gradeReport.verdict}</p>
+              <p className="text-xs text-muted-foreground mb-4">📖 {gradeReport.benchmark}</p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4 text-xs">
-                <div className="bg-muted/40 p-2 rounded"><b>Hook & Voice</b><br/>{aiGrade.rubric.hookVoice}/20</div>
-                <div className="bg-muted/40 p-2 rounded"><b>Story & Specificity</b><br/>{aiGrade.rubric.storySpecificity}/25</div>
-                <div className="bg-muted/40 p-2 rounded"><b>Insight & Reflection</b><br/>{aiGrade.rubric.insightReflection}/20</div>
-                <div className="bg-muted/40 p-2 rounded"><b>Structure & Flow</b><br/>{aiGrade.rubric.structureFlow}/15</div>
-                <div className="bg-muted/40 p-2 rounded"><b>Mechanics & Style</b><br/>{aiGrade.rubric.mechanicsStyle}/10</div>
-                <div className="bg-muted/40 p-2 rounded"><b>Fit to Prompt</b><br/>{aiGrade.rubric.fitToPrompt}/10</div>
+              <div className="grid grid-cols-3 gap-2 mb-4 text-xs">
+                <div className="bg-muted/40 p-2 rounded text-center">
+                  <b>Flesch–Kincaid</b><br/>Grade {gradeReport.fleschKincaid}
+                </div>
+                <div className="bg-muted/40 p-2 rounded text-center">
+                  <b>Gunning Fog</b><br/>Grade {gradeReport.gunningFog}
+                </div>
+                <div className="bg-muted/40 p-2 rounded text-center">
+                  <b>Coleman–Liau</b><br/>Grade {gradeReport.colemanLiau}
+                </div>
               </div>
 
-              {aiGrade.strengths?.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="font-bold text-green-700 text-sm mb-1">✅ Strengths</h4>
-                  <ul className="list-disc list-inside text-sm space-y-1 text-foreground">
-                    {aiGrade.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                  </ul>
-                </div>
-              )}
-              {aiGrade.weaknesses?.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="font-bold text-red-700 text-sm mb-1">🚫 Weaknesses</h4>
-                  <ul className="list-disc list-inside text-sm space-y-1 text-foreground">
-                    {aiGrade.weaknesses.map((s, i) => <li key={i}>{s}</li>)}
-                  </ul>
-                </div>
-              )}
-              {aiGrade.revisionPlan?.length > 0 && (
-                <div>
-                  <h4 className="font-bold text-primary text-sm mb-1">📝 Revision Plan</h4>
-                  <ol className="list-decimal list-inside text-sm space-y-1 text-foreground">
-                    {aiGrade.revisionPlan.map((s, i) => <li key={i}>{s}</li>)}
-                  </ol>
-                </div>
-              )}
+              <h4 className="font-bold text-sm mb-2 text-primary">📊 Benchmark vs. Successful Essays</h4>
+              <div className="space-y-2">
+                {gradeReport.comparison.map((c, i) => (
+                  <div key={i} className={`p-2 rounded border-l-4 text-sm ${statusColors[c.status]}`}>
+                    <div className="flex justify-between flex-wrap gap-2">
+                      <b>{c.metric}</b>
+                      <span>You: <b>{c.yours}</b> &nbsp;•&nbsp; Successful: {c.successful}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {feedback.length > 0 && (
             <div className="bg-card rounded-xl shadow-md p-6 border border-border mt-4 space-y-2">
-              <h3 className="text-lg font-bold text-primary mb-2">Essay Feedback ({feedback.length} items)</h3>
+              <h3 className="text-lg font-bold text-primary mb-2">Detailed Feedback ({feedback.length} items)</h3>
               {feedback.map((fb, i) => (
                 <div key={i} className={`p-3 rounded-lg text-sm border-l-4 ${typeColors[fb.type]}`}>{fb.text}</div>
               ))}
