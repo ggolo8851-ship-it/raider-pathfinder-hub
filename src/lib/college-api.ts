@@ -486,17 +486,29 @@ export async function searchColleges(
 
   const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
 
+  // When an MSI/Women's filter is active, query Scorecard directly with that flag
+  // so we surface schools that wouldn't make the top-100-by-admit-rate cut.
+  const msiQueryParam: Record<string, string> = {
+    hbcu: "school.minority_serving.historically_black=1",
+    hsi: "school.minority_serving.hispanic=1",
+    aanapisi: "school.minority_serving.aanapii=1",
+    tcu: "school.minority_serving.tribal=1",
+    womens: "school.women_only=1",
+  };
+  const msiFlag = filters.msiFilter && filters.msiFilter !== "all" && filters.msiFilter !== "pwi"
+    ? msiQueryParam[filters.msiFilter] : undefined;
+
   const buildUrl = (page: number, perPage: number) => {
-    // When searching by name, drop the bachelor's-only restriction so specialty/grad-heavy
-    // schools surface; when browsing, keep predominant=3 to focus on undergrad institutions.
-    const predominant = hasSearchQuery ? "" : "&school.degrees_awarded.predominant=3";
+    // When searching by name OR filtering by MSI, drop the bachelor's-only restriction.
+    const predominant = (hasSearchQuery || msiFlag) ? "" : "&school.degrees_awarded.predominant=3";
     let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1${predominant}&fields=${fields}&per_page=${perPage}&page=${page}`;
-    // Sort by selectivity only when not searching; when searching, let API relevance + our client-side rank decide.
-    if (!hasSearchQuery) url += `&sort=latest.admissions.admission_rate.overall:asc`;
+    // Sort by selectivity only when not searching/filtering by MSI; otherwise let API relevance decide.
+    if (!hasSearchQuery && !msiFlag) url += `&sort=latest.admissions.admission_rate.overall:asc`;
     if (filters.stateFilter === "maryland" && !hasSearchQuery) url += "&school.state=MD";
     if (hasSearchQuery) {
       url += `&school.search=${encodeURIComponent(filters.searchQuery!.trim())}`;
     }
+    if (msiFlag) url += `&${msiFlag}`;
     return url;
   };
 
