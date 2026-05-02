@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { enforceRememberPolicyOnBoot } from "@/lib/remember-me";
 
 interface AuthCtx {
   session: Session | null;
