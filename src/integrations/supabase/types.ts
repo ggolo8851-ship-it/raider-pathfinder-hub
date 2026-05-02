@@ -221,6 +221,42 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_tabs: {
+        Row: {
+          content: Json
+          created_at: string
+          icon: string | null
+          id: string
+          order_index: number
+          published: boolean
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          icon?: string | null
+          id?: string
+          order_index?: number
+          published?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          icon?: string | null
+          id?: string
+          order_index?: number
+          published?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_blacklist: {
         Row: {
           added_by: string | null
