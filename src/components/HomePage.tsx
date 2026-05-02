@@ -56,6 +56,8 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
             </p>
           </div>
 
+          <div className="mt-4"><RefreshCountdown /></div>
+
           {daysUntilMarch > 0 && msDiff > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
               <p className="font-bold text-lg">⏳ Financial Aid Countdown:
