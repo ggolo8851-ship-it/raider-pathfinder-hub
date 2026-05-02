@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const ESSAY_PROMPTS = [
   {
@@ -68,12 +69,41 @@ const CLICHES = [
   "pushed me out of my comfort zone", "at the end of the day",
 ];
 
+interface AIGrade {
+  score: number;
+  verdict: string;
+  rubric: { hookVoice: number; storySpecificity: number; insightReflection: number; structureFlow: number; mechanicsStyle: number; fitToPrompt: number; };
+  strengths: string[];
+  weaknesses: string[];
+  revisionPlan: string[];
+}
+
 const EssayPage = () => {
   const [essay, setEssay] = useState("");
+  const [essayPrompt, setEssayPrompt] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "warning" | "error" | "info"; text: string }[]>([]);
   const [wordCount, setWordCount] = useState(0);
   const [activeTab, setActiveTab] = useState<"write" | "prompts" | "tips" | "resources">("write");
   const [essayScore, setEssayScore] = useState<number | null>(null);
+  const [aiGrade, setAiGrade] = useState<AIGrade | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const runAIGrader = async () => {
+    setAiLoading(true); setAiError(null); setAiGrade(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("grade-essay", {
+        body: { essay, prompt: essayPrompt || undefined },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setAiGrade(data as AIGrade);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Failed to grade essay");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const analyzeEssay = () => {
     const words = essay.trim().split(/\s+/).filter(Boolean);
@@ -230,6 +260,7 @@ const EssayPage = () => {
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
     if (feedback.length > 0) setFeedback([]);
     setEssayScore(null);
+    setAiGrade(null); setAiError(null);
   };
 
   const typeColors = {
