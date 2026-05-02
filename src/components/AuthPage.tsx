@@ -30,12 +30,30 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // On mount: prefill the email if the user previously asked to be remembered.
+  useEffect(() => {
+    const remembered = getRememberedEmail();
+    if (remembered) setEmail(remembered);
+    setRememberMe(getRememberFlag() || !!remembered);
+  }, []);
 
   const validSecCode = (c: string) => c.length >= 6 && /^[A-Za-z0-9!@#$%^&*_-]+$/.test(c);
 
+  const persistRememberChoice = (cleanEmail: string) => {
+    if (rememberMe) {
+      setRememberedEmail(cleanEmail);
+    } else {
+      clearRememberedEmail();
+    }
+    applyRememberMe(rememberMe);
+  };
+
   const handleLogin = async () => {
     setError(""); setLoading(true);
-    const { error } = await signInWithEmail(email.trim().toLowerCase(), password);
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await signInWithEmail(cleanEmail, password);
     setLoading(false);
     if (error) {
       if (error.message.toLowerCase().includes("blocked") || error.message.toLowerCase().includes("blacklist")) {
@@ -45,6 +63,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
       }
       return;
     }
+    persistRememberChoice(cleanEmail);
     onLogin();
   };
 
