@@ -29,6 +29,7 @@ const NAV: [Section, string][] = [
   ["colleges", "🎓 Colleges"],
   ["clubs", "🏫 Clubs & Activities"],
   ["faculty", "👨‍🏫 Faculty Board"],
+  ["tabs", "🧩 Custom Tabs"],
   ["users", "👥 Users"],
   ["filters", "🎛️ Filters & Settings"],
   ["content", "🎨 Content & UI"],
