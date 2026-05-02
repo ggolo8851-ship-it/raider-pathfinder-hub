@@ -653,9 +653,24 @@ export async function searchColleges(
       if (filters.countryFilter === "us" && c.isInternational) return false;
       if (filters.countryFilter === "intl" && !c.isInternational) return false;
 
+      // NEW: test-policy filter (required / optional / blind)
+      if (filters.testPolicyFilter && filters.testPolicyFilter !== "all") {
+        if ((c.testPolicy || "unknown") !== filters.testPolicyFilter) return false;
+      }
+
       return true;
     })
-    .sort((a, b) => b.fitScore - a.fitScore);
+    .sort((a, b) => {
+      // When user is searching by name, prioritize closer name matches first.
+      if (hasSearchQuery) {
+        const q = filters.searchQuery!.trim().toLowerCase();
+        const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+        const aRank = an === q ? 0 : an.startsWith(q) ? 1 : an.includes(q) ? 2 : 3;
+        const bRank = bn === q ? 0 : bn.startsWith(q) ? 1 : bn.includes(q) ? 2 : 3;
+        if (aRank !== bRank) return aRank - bRank;
+      }
+      return b.fitScore - a.fitScore;
+    });
 }
 
 // AI re-rank wrapper: given the user's full profile and a list of CollegeResults,
