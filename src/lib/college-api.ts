@@ -90,6 +90,14 @@ export interface CollegeResult {
   id: string;
   vibeScore?: number;
   aiReason?: string;
+  // NEW fields
+  setting?: string;                 // Urban / Suburban / Small Town / Rural / Unknown
+  bestKnownPrograms?: string[];     // top 2-3 programs
+  athleticDivision?: "D1" | "D2" | "D3" | "NAIA" | "None" | "Unknown";
+  country?: string;                 // "USA" or country name for intl
+  isInternational?: boolean;        // true if from international_colleges table
+  chancePct?: number | null;        // 0-100 estimated admit chance for this user
+  classification?: "tier1" | "tier2" | "tier3" | "tier4";
   demographics?: {
     white: number;
     black: number;
