@@ -457,18 +457,20 @@ export const VIBE_POLL_QUESTIONS = [
   },
 ];
 
+// Updated for Class of 2026 — PGCPS / Maryland State Department of Education.
+// Source: https://www.pgcps.org/offices/curriculum-and-instruction/graduation-requirements
 export const MD_GRADUATION_REQUIREMENTS = [
   { subject: "English", credits: "4" },
   { subject: "Mathematics (Algebra I+)", credits: "4" },
-  { subject: "Science (incl. Biology & Chemistry)", credits: "3" },
+  { subject: "Science (incl. Biology & one lab science)", credits: "3" },
   { subject: "Social Studies (US History, World History, Gov)", credits: "3" },
   { subject: "Physical Education", credits: "0.5" },
   { subject: "Health Education", credits: "0.5" },
   { subject: "Fine Arts", credits: "1" },
   { subject: "Technology Education", credits: "1" },
   { subject: "World Language / Advanced Tech Ed", credits: "2" },
-  { subject: "Electives", credits: "2" },
-  { subject: "Total Credits Required", credits: "21" },
+  { subject: "Electives", credits: "3" },
+  { subject: "Total Credits Required", credits: "22" },
   { subject: "Student Service Learning (SSL)", credits: "24 hours" },
 ];
 
