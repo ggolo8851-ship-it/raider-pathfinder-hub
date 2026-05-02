@@ -20,13 +20,14 @@ interface Props {
 
 type Section =
   | "dashboard" | "access" | "colleges" | "clubs" | "users"
-  | "filters" | "content" | "integrity" | "logs";
+  | "filters" | "content" | "integrity" | "logs" | "faculty";
 
 const NAV: [Section, string][] = [
   ["dashboard", "📊 Dashboard"],
   ["access", "🔐 Access Control"],
   ["colleges", "🎓 Colleges"],
   ["clubs", "🏫 Clubs & Activities"],
+  ["faculty", "👨‍🏫 Faculty Board"],
   ["users", "👥 Users"],
   ["filters", "🎛️ Filters & Settings"],
   ["content", "🎨 Content & UI"],
