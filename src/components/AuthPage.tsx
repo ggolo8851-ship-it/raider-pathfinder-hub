@@ -106,6 +106,7 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     } else {
       toast.success("Account created — remember your security code, you'll need it if you forget your password.");
     }
+    persistRememberChoice(cleanEmail);
     onLogin();
   };
 
