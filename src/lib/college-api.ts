@@ -455,6 +455,15 @@ export async function searchColleges(
     "latest.student.demographics.race_ethnicity.black",
     "latest.student.demographics.race_ethnicity.hispanic",
     "latest.student.demographics.race_ethnicity.asian",
+    // Institutional classification flags
+    "school.women_only", "school.men_only",
+    "school.minority_serving.historically_black",
+    "school.minority_serving.hispanic",
+    "school.minority_serving.annh",
+    "school.minority_serving.aanapii",
+    "school.minority_serving.tribal",
+    "school.minority_serving.nant",
+    "school.minority_serving.predominantly_black",
     // Top-program fields for "Best known for"
     "latest.academics.program_percentage.computer",
     "latest.academics.program_percentage.engineering",
