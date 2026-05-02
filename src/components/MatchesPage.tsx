@@ -350,10 +350,14 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-secondary">{c.salaryRange}</p>
                       <p className="text-xs text-muted-foreground">{c.growth}</p>
-                      <a href={c.searchLink} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-primary underline mt-1 inline-block">Search on Indeed ↗</a>
+                      <div className="flex flex-col items-end gap-0.5 mt-1">
+                        <a href={c.searchLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Indeed ↗</a>
+                        <a href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">LinkedIn ↗</a>
+                        <a href={`https://www.glassdoor.com/Job/${encodeURIComponent(c.title.toLowerCase().replace(/\s+/g, "-"))}-jobs-SRCH_KO0,${c.title.length}.htm`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Glassdoor ↗</a>
+                        <a href={`https://app.joinhandshake.com/stu/postings?keywords=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Handshake ↗</a>
+                      </div>
                       <button onClick={() => setExpandedCareer(expandedCareer === c.title ? null : c.title)}
-                        className="text-xs text-primary underline mt-1 block">
+                        className="text-xs text-primary underline mt-2 block">
                         {expandedCareer === c.title ? "Less Info" : "More Info"}
                       </button>
                     </div>
