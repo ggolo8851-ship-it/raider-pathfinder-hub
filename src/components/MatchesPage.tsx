@@ -60,37 +60,47 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     return () => { cancelled = true; };
   }, [profile]);
 
+  // Debounce the search input — prevents flicker / API spam while typing
   useEffect(() => {
-    if (tab === "colleges") {
-      setLoading(true);
-      const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, searchQuery: collegeSearch };
-      searchColleges(
-        profile.major, filters, email, profile.gpa, profile.aps,
-        profile.clubs || [], profile.sat || "", profile.act || "",
-        profile.extracurriculars || [], profile.sports || [],
-        profile.vibeAnswers || {},
-        profile.lat, profile.lon,
-        profile.testOptional,
-        profile.interests || []
-      )
-        .then(async (results) => {
-          setColleges(results);
-          if (results.length > 0) {
-            const ranked = await aiRankColleges(results, {
-              major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
-              aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
-              extracurriculars: profile.extracurriculars, achievements: profile.achievements,
-              interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
-              vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
-            });
-            setColleges(ranked);
-          }
-        })
-        .catch(() => setColleges([]))
-        .finally(() => setLoading(false));
-    }
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, collegeSearch, email]);
+    const t = setTimeout(() => setDebouncedSearch(collegeSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [collegeSearch]);
+
+  useEffect(() => {
+    if (tab !== "colleges") return;
+    setLoading(true);
+    let cancelled = false;
+    const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
+    const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
+    const isSearching = debouncedSearch.length > 1;
+    searchColleges(
+      profile.major, filters, email, profile.gpa, profile.aps,
+      profile.clubs || [], profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], profile.sports || [],
+      profile.vibeAnswers || {},
+      profile.lat, profile.lon,
+      profile.testOptional,
+      profile.interests || []
+    )
+      .then(async (results) => {
+        if (cancelled) return;
+        setColleges(results);
+        // Skip AI re-rank during active name search — it would override exact-match priority.
+        if (results.length > 0 && !isSearching) {
+          const ranked = await aiRankColleges(results, {
+            major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+            aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+            extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+            interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
+            vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
+          });
+          if (!cancelled) setColleges(ranked);
+        }
+      })
+      .catch(() => { if (!cancelled) setColleges([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
