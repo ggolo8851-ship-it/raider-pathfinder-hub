@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
 
 interface AppNavProps {
   currentPage: string;
@@ -10,6 +11,8 @@ interface AppNavProps {
 
 const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: AppNavProps) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  useEffect(() => { fetchPublishedTabs().then(setCustomTabs); }, []);
 
   const links = [
     { id: "home", label: "Home" },
@@ -21,6 +24,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
     { id: "transcripts", label: "Counseling" },
     { id: "graduation", label: "Graduation" },
     { id: "faculty", label: "Faculty" },
+    ...customTabs.map(t => ({ id: `custom:${t.slug}`, label: `${t.icon || "📄"} ${t.title}` })),
   ];
 
   return (
