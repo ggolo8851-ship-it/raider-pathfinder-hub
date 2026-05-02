@@ -93,6 +93,8 @@ export interface CollegeResult {
   id: string;
   vibeScore?: number;
   aiReason?: string;
+  avgSalary10yr?: number | null;     // College Scorecard median earnings 10yr after entry
+  testPolicy?: "required" | "optional" | "blind" | "unknown";
   // NEW fields
   setting?: string;                 // Urban / Suburban / Small Town / Rural / Unknown
   bestKnownPrograms?: string[];     // top 2-3 programs
@@ -361,6 +363,7 @@ export interface SearchFilters {
   classificationFilter?: string;  // tier1/tier2/tier3/tier4 (prestige class)
   athleticFilter?: string;        // d1/d2/d3/naia/none
   countryFilter?: string;         // us/intl/all
+  testPolicyFilter?: string;      // required/optional/blind/all
   searchQuery?: string;
 }
 
