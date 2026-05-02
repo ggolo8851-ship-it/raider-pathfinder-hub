@@ -221,7 +221,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
             <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (YouTube) ↗</a>
             <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🏆 Niche Ranking ↗</a>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " 2024 2025 common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set ↗</a>
+            {(() => {
+              let domain = "";
+              try { domain = new URL(c.url).hostname.replace(/^www\./, ""); } catch {}
+              const cdsQ = domain
+                ? `site:${domain} "common data set" filetype:pdf`
+                : `${c.name} latest common data set filetype:pdf`;
+              return (
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(cdsQ)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set (PDF) ↗</a>
+              );
+            })()}
             <a href={`https://collegescorecard.ed.gov/school?id=${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">💰 Salary Data ↗</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
