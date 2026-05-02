@@ -71,6 +71,7 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
           {section === "access" && <AccessControl currentEmail={adminEmail} />}
           {section === "colleges" && <CollegesPanel adminEmail={adminEmail} />}
           {section === "clubs" && <ClubsPanel adminEmail={adminEmail} />}
+          {section === "faculty" && <FacultyAdminPanel />}
           {section === "users" && <UsersPanel adminEmail={adminEmail} />}
           {section === "filters" && <FiltersStub />}
           {section === "content" && <ContentUIPanel adminEmail={adminEmail} />}
