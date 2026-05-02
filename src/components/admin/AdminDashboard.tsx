@@ -544,9 +544,25 @@ function ClubsPanel({ adminEmail }: { adminEmail: string }) {
       <div className="bg-card rounded-xl p-4 border border-border mb-4">
         <label className="text-xs text-muted-foreground">Google Sheet URL</label>
         <Input value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} className="mb-3 mt-1" />
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button onClick={sync} disabled={syncing}>{syncing ? "Syncing..." : "🔄 Sync from Google Sheet"}</Button>
           <Button variant="outline" onClick={addNew}>+ Add Club</Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke("monthly-refresh", { body: { manual: true } });
+                if (error) throw error;
+                await audit(adminEmail, "manual_refresh_all", "monthly-refresh", data ?? {});
+                toast.success("All data refreshed");
+                load();
+              } catch (e: any) {
+                toast.error(e.message ?? "Refresh failed");
+              }
+            }}
+          >
+            ⚡ Refresh All Data Now
+          </Button>
         </div>
       </div>
       <div className="bg-card rounded-xl border border-border overflow-hidden max-h-[500px] overflow-y-auto">
