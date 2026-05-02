@@ -100,9 +100,9 @@ function AccessControl({ currentEmail }: { currentEmail: string }) {
   useEffect(() => { load(); }, []);
 
   const audit = async (action: string, target: string, details?: object) => {
-    await supabase.from("admin_audit_log").insert({
-      admin_email: currentEmail, action, target, details: details ?? {},
-    });
+    await supabase.from("admin_audit_log").insert([{
+      admin_email: currentEmail, action, target, details: (details ?? {}) as any,
+    }]);
   };
 
   const addWhite = async () => {
