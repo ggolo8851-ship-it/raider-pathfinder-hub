@@ -264,7 +264,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -274,14 +274,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="medium">Medium (2K-10K)</option>
                     <option value="large">Large (10K-25K)</option>
                     <option value="verylarge">Very Large (25K+)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-foreground">Tuition Type</label>
-                  <select value={tuitionType} onChange={e => setTuitionType(e.target.value as any)}
-                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
-                    <option value="out_of_state">Out-of-State</option>
-                    <option value="in_state">In-State</option>
                   </select>
                 </div>
                 <div>
