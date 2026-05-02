@@ -28,9 +28,14 @@ export async function signOut() {
 }
 
 export async function resetPassword(email: string) {
-  return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/reset-password",
+  // Send a branded reset email via Resend (edge function uses
+  // supabase admin.generateLink to create the secure recovery link).
+  const { data, error } = await supabase.functions.invoke("send-password-reset", {
+    body: { email, redirectTo: window.location.origin + "/reset-password" },
   });
+  if (error) return { error };
+  if (data?.error) return { error: { message: data.error } as any };
+  return { error: null };
 }
 
 export async function getCurrentSession() {
