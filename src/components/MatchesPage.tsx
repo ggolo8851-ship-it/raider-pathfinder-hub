@@ -152,6 +152,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             {c.costInState && <>In-state: ${c.costInState.toLocaleString()}/yr</>}
           </p>
           {c.satAvg && <p className="text-xs text-muted-foreground">Avg SAT: {c.satAvg} {c.admissionRate && <>• Admit Rate: {(c.admissionRate * 100).toFixed(0)}%</>}</p>}
+          {c.avgSalary10yr != null && <p className="text-xs text-muted-foreground">💵 Median grad salary: ${c.avgSalary10yr.toLocaleString()}/yr</p>}
         </div>
         <div className="flex flex-col gap-2 items-end shrink-0">
           <button onClick={() => toggleBookmark(c.id)} className="text-2xl" title="Bookmark">
