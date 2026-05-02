@@ -494,6 +494,10 @@ export async function searchColleges(
         if (filters.tierFilter === "possible_reach" && c.tier !== "Possible Reach") return false;
         if (filters.tierFilter === "far_reach" && c.tier !== "Far Reach") return false;
         if (filters.tierFilter === "reach" && c.tier !== "Possible Reach" && c.tier !== "Far Reach") return false;
+        if (filters.tierFilter === "hidden_ivies" && !HIDDEN_IVIES.has(c.name)) return false;
+        if (filters.tierFilter === "service_academies" && !SERVICE_ACADEMIES.has(c.name)) return false;
+        // International filter: College Scorecard only contains US schools, so this surfaces a hint instead of filtering
+        if (filters.tierFilter === "international") return false;
       }
       return true;
     })
