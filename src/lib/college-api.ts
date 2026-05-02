@@ -516,7 +516,7 @@ export async function searchColleges(
   const wantUS = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "us";
   const wantIntl = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "intl";
 
-  const pages = hasSearchQuery ? [0, 1, 2] : [0];
+  const pages = (hasSearchQuery || msiFlag) ? [0, 1, 2] : [0];
   const perPage = 100;
   const allResults: any[] = [];
   if (wantUS) {
