@@ -34,13 +34,25 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   }, [email]);
 
   useEffect(() => {
-    setCareers(getCareerMatches(
-      profile.major, profile.aps,
-      profile.clubs || [], profile.sports || [],
-      profile.isST, profile.extracurriculars || [],
-      profile.gpa, profile.achievements || [],
-      profile.interests || []
-    ));
+    let cancelled = false;
+    (async () => {
+      const fallback = getCareerMatches(
+        profile.major, profile.aps,
+        profile.clubs || [], profile.sports || [],
+        profile.isST, profile.extracurriculars || [],
+        profile.gpa, profile.achievements || [],
+        profile.interests || []
+      );
+      if (!cancelled) setCareers(fallback);
+      const ai = await aiGetCareerMatches({
+        major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+        aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+        extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+        interests: profile.interests, isST: profile.isST, gradYear: profile.gradYear,
+      });
+      if (!cancelled && ai && ai.length > 0) setCareers(ai);
+    })();
+    return () => { cancelled = true; };
   }, [profile]);
 
   useEffect(() => {
@@ -57,7 +69,19 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         profile.testOptional,
         profile.interests || []
       )
-        .then(setColleges)
+        .then(async (results) => {
+          setColleges(results); // show rule-based instantly
+          if (results.length > 0) {
+            const ranked = await aiRankColleges(results, {
+              major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+              aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+              extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+              interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
+              vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
+            });
+            setColleges(ranked);
+          }
+        })
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
