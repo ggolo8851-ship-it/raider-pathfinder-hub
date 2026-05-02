@@ -558,6 +558,21 @@ export async function searchColleges(
       };
       demographics.other = Math.max(0, 100 - demographics.white - demographics.black - demographics.hispanic - demographics.asian);
 
+      // Institutional classification (MSI / Women's / PWI)
+      const womenOnly = c['school.women_only'] === 1 || c['school.women_only'] === true;
+      const menOnly = c['school.men_only'] === 1 || c['school.men_only'] === true;
+      const msi: string[] = [];
+      if (c['school.minority_serving.historically_black'] === 1) msi.push("HBCU");
+      if (c['school.minority_serving.hispanic'] === 1) msi.push("HSI");
+      if (c['school.minority_serving.aanapii'] === 1) msi.push("AANAPISI");
+      if (c['school.minority_serving.tribal'] === 1) msi.push("TCU");
+      if (c['school.minority_serving.annh'] === 1) msi.push("ANNH");
+      if (c['school.minority_serving.nant'] === 1) msi.push("NANTI");
+      if (c['school.minority_serving.predominantly_black'] === 1) msi.push("PBI");
+      if (womenOnly) msi.push("Women's College");
+      if (menOnly) msi.push("Men's College");
+      if (msi.length === 0) msi.push("PWI");
+
       return {
         name,
         city: c['school.city'],
@@ -584,6 +599,9 @@ export async function searchColleges(
         chancePct: estimateChancePct(admRate, satAvg, userSat, gpaNum, testOptional),
         avgSalary10yr: salary10,
         testPolicy,
+        womenOnly,
+        menOnly,
+        institutionalClassification: msi,
         demographics,
       };
     })
