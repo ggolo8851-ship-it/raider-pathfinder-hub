@@ -353,10 +353,34 @@ export interface SearchFilters {
   minDistance: number;
   sizeFilter: string;
   maxCost: number;
-  tuitionType: "out_of_state" | "in_state";
   stateFilter: string;
-  tierFilter?: string;
+  tierFilter?: string;            // Fit tier: safety/target/reach/etc
+  classificationFilter?: string;  // tier1/tier2/tier3/tier4 (prestige class)
+  athleticFilter?: string;        // d1/d2/d3/naia/none
+  countryFilter?: string;         // us/intl/all
   searchQuery?: string;
+}
+
+// Estimate the user's chance of admission (0-100) given school stats and user profile.
+function estimateChancePct(admRate: number | null, schoolSat: number | null, userSat: number, userGpa: number, testOptional: boolean): number | null {
+  if (admRate === null) return null;
+  let chance = admRate * 100;
+  if (!testOptional && schoolSat && userSat > 0) {
+    const diff = userSat - schoolSat;
+    if (diff >= 100) chance *= 1.5;
+    else if (diff >= 50) chance *= 1.25;
+    else if (diff >= 0) chance *= 1.05;
+    else if (diff >= -50) chance *= 0.85;
+    else if (diff >= -100) chance *= 0.6;
+    else chance *= 0.35;
+  }
+  if (userGpa >= 3.9) chance *= 1.25;
+  else if (userGpa >= 3.7) chance *= 1.1;
+  else if (userGpa >= 3.5) chance *= 1.0;
+  else if (userGpa >= 3.2) chance *= 0.75;
+  else if (userGpa >= 3.0) chance *= 0.55;
+  else chance *= 0.3;
+  return Math.max(1, Math.min(99, Math.round(chance)));
 }
 
 // Curated lists of "Hidden Ivies" (highly regarded liberal arts/research universities outside the Ivy League)
