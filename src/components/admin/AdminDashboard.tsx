@@ -12,6 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import FacultyAdminPanel from "./FacultyAdminPanel";
+import CustomTabsAdminPanel from "./CustomTabsAdminPanel";
 
 interface Props {
   onExit: () => void;
@@ -20,7 +21,7 @@ interface Props {
 
 type Section =
   | "dashboard" | "access" | "colleges" | "clubs" | "users"
-  | "filters" | "content" | "integrity" | "logs" | "faculty";
+  | "filters" | "content" | "integrity" | "logs" | "faculty" | "tabs";
 
 const NAV: [Section, string][] = [
   ["dashboard", "📊 Dashboard"],
@@ -28,6 +29,7 @@ const NAV: [Section, string][] = [
   ["colleges", "🎓 Colleges"],
   ["clubs", "🏫 Clubs & Activities"],
   ["faculty", "👨‍🏫 Faculty Board"],
+  ["tabs", "🧩 Custom Tabs"],
   ["users", "👥 Users"],
   ["filters", "🎛️ Filters & Settings"],
   ["content", "🎨 Content & UI"],
@@ -72,6 +74,7 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
           {section === "colleges" && <CollegesPanel adminEmail={adminEmail} />}
           {section === "clubs" && <ClubsPanel adminEmail={adminEmail} />}
           {section === "faculty" && <FacultyAdminPanel />}
+          {section === "tabs" && <CustomTabsAdminPanel />}
           {section === "users" && <UsersPanel adminEmail={adminEmail} />}
           {section === "filters" && <FiltersStub />}
           {section === "content" && <ContentUIPanel adminEmail={adminEmail} />}

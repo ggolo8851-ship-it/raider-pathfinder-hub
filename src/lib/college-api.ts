@@ -183,7 +183,8 @@ function getTier(
   return "Far Reach";
 }
 
-// Completely revamped fit score: real differentiation, no artificial floor
+// Revamped fit score: weights GPA, test, AP rigor, major program, vibe, clubs, ECs,
+// achievements, service hours, sport/athletic-division match, distance, AND chance%.
 function calculateFitScore(
   college: any,
   queryField: string,
@@ -197,163 +198,148 @@ function calculateFitScore(
   vibeAnswers: Record<string, string>,
   testOptional: boolean,
   userSat: number,
-  userInterests: string[]
+  userInterests: string[],
+  userAchievements: string[] = [],
+  serviceHours: number = 0,
+  athleticDivision: string = "Unknown"
 ): number {
   let score = 0;
 
-  // 1. Academic Profile (max 30 pts)
+  // 1. Academic Profile (max 25 pts)
   const admRate = college['latest.admissions.admission_rate.overall'] || null;
   const satAvg = college['latest.admissions.sat_scores.average.overall'] || null;
-  
-  // GPA vs selectivity (max 15)
+
+  // GPA vs selectivity (max 13)
   if (admRate) {
-    if (admRate > 0.6) {
-      // Less selective: GPA 3.0+ is fine
-      score += gpa >= 3.0 ? 15 : gpa >= 2.5 ? 10 : 5;
-    } else if (admRate > 0.3) {
-      // Moderately selective
-      score += gpa >= 3.5 ? 15 : gpa >= 3.2 ? 11 : gpa >= 3.0 ? 7 : 3;
-    } else if (admRate > 0.15) {
-      // Selective
-      score += gpa >= 3.8 ? 15 : gpa >= 3.5 ? 10 : gpa >= 3.2 ? 6 : 2;
-    } else {
-      // Highly selective
-      score += gpa >= 3.9 ? 13 : gpa >= 3.7 ? 8 : gpa >= 3.5 ? 4 : 1;
-    }
+    if (admRate > 0.6) score += gpa >= 3.0 ? 13 : gpa >= 2.5 ? 9 : 4;
+    else if (admRate > 0.3) score += gpa >= 3.5 ? 13 : gpa >= 3.2 ? 10 : gpa >= 3.0 ? 6 : 2;
+    else if (admRate > 0.15) score += gpa >= 3.8 ? 13 : gpa >= 3.5 ? 9 : gpa >= 3.2 ? 5 : 2;
+    else score += gpa >= 3.9 ? 12 : gpa >= 3.7 ? 7 : gpa >= 3.5 ? 4 : 1;
   } else {
-    score += gpa >= 3.5 ? 12 : gpa >= 3.0 ? 8 : 4;
+    score += gpa >= 3.5 ? 10 : gpa >= 3.0 ? 7 : 4;
   }
 
-  // Test score match — supports SAT, ACT, or test-optional (max 10)
-  // Normalize: SAT 400-1600, ACT 1-36
-  if (!testOptional && satAvg) {
-    let userScoreNorm = 0;
-    if (userSat > 0) userScoreNorm = userSat / 1600;
-    // ACT passed via global on calculateFitScore? We use userSat as a proxy; ACT handled in caller via conversion.
-    if (userScoreNorm > 0) {
-      const collegeNorm = satAvg / 1600;
-      const ratio = userScoreNorm / collegeNorm;
-      if (ratio >= 1.1) score += 10;
-      else if (ratio >= 1.03) score += 8;
-      else if (ratio >= 0.97) score += 6;
-      else if (ratio >= 0.9) score += 4;
-      else if (ratio >= 0.82) score += 2;
-      else score += 1;
-    } else {
-      // No score provided but not test-optional flagged — give neutral weight from GPA
-      score += gpa >= 3.7 ? 7 : gpa >= 3.3 ? 5 : 3;
-    }
+  // Test score match (max 8)
+  if (!testOptional && satAvg && userSat > 0) {
+    const ratio = (userSat / 1600) / (satAvg / 1600);
+    if (ratio >= 1.1) score += 8;
+    else if (ratio >= 1.03) score += 6;
+    else if (ratio >= 0.97) score += 5;
+    else if (ratio >= 0.9) score += 3;
+    else if (ratio >= 0.82) score += 2;
+    else score += 1;
   } else {
-    // Test-optional pathway: weight GPA + rigor more
-    score += gpa >= 3.7 ? 8 : gpa >= 3.3 ? 6 : gpa >= 3.0 ? 4 : 2;
+    score += gpa >= 3.7 ? 6 : gpa >= 3.3 ? 4 : 2;
   }
 
-  // AP rigor (max 5)
-  if (apCount >= 6) score += 5;
-  else if (apCount >= 4) score += 4;
-  else if (apCount >= 2) score += 3;
-  else if (apCount >= 1) score += 2;
+  // AP rigor (max 4) — scaled higher for selective schools
+  const rigorMult = admRate && admRate < 0.3 ? 1.0 : 0.75;
+  if (apCount >= 6) score += 4 * rigorMult;
+  else if (apCount >= 4) score += 3 * rigorMult;
+  else if (apCount >= 2) score += 2 * rigorMult;
+  else if (apCount >= 1) score += 1 * rigorMult;
 
-  // 2. Major Program Match (max 20 pts)
+  // 2. Major Program Match (max 18 pts)
   const programPct = college[queryField] || 0;
-  if (programPct > 0.25) score += 20;
-  else if (programPct > 0.15) score += 16;
-  else if (programPct > 0.08) score += 12;
-  else if (programPct > 0.03) score += 8;
-  else if (programPct > 0.01) score += 4;
+  if (programPct > 0.25) score += 18;
+  else if (programPct > 0.15) score += 14;
+  else if (programPct > 0.08) score += 10;
+  else if (programPct > 0.03) score += 6;
+  else if (programPct > 0.01) score += 3;
   else score += 1;
 
-  // 3. Vibe matching (max 20 pts)
+  // 3. Vibe matching (max 15 pts)
   if (vibeAnswers && Object.keys(vibeAnswers).length > 0) {
     const enrollment = college['latest.student.size'] || 0;
     const schoolState = college['school.state'] || '';
     const cost = college['latest.cost.tuition.in_state'] || 0;
     let vibeMatch = 0;
-
-    // Class size
-    if (vibeAnswers.classsize === 'small_class' && enrollment < 5000) vibeMatch += 3;
-    else if (vibeAnswers.classsize === 'large_class' && enrollment > 15000) vibeMatch += 3;
-    else if (vibeAnswers.classsize === 'small_class' && enrollment < 10000) vibeMatch += 1;
-    else if (vibeAnswers.classsize === 'large_class' && enrollment > 8000) vibeMatch += 1;
-
-    // Setting match
+    if (vibeAnswers.classsize === 'small_class' && enrollment < 5000) vibeMatch += 2;
+    else if (vibeAnswers.classsize === 'large_class' && enrollment > 15000) vibeMatch += 2;
     if (vibeAnswers.setting === 'urban' && enrollment > 10000) vibeMatch += 2;
     else if (vibeAnswers.setting === 'rural' && enrollment < 8000) vibeMatch += 2;
-
-    // Cost/prestige
-    if (vibeAnswers.priority === 'value') {
-      if (cost && cost < 12000) vibeMatch += 4;
-      else if (cost && cost < 20000) vibeMatch += 2;
-    }
-    if (vibeAnswers.priority === 'prestige') {
-      if (admRate && admRate < 0.15) vibeMatch += 4;
-      else if (admRate && admRate < 0.3) vibeMatch += 2;
-    }
-
-    // Weekend
+    if (vibeAnswers.priority === 'value' && cost && cost < 20000) vibeMatch += 3;
+    if (vibeAnswers.priority === 'prestige' && admRate && admRate < 0.2) vibeMatch += 3;
     if (vibeAnswers.weekend === 'big_sports' && enrollment > 20000) vibeMatch += 2;
     if (vibeAnswers.weekend === 'local_culture' && enrollment < 10000) vibeMatch += 2;
-
-    // Climate
     const coldStates = ['ME','VT','NH','MN','WI','MI','MT','ND','SD','WY','AK'];
     const warmStates = ['FL','CA','AZ','TX','HI','NM','LA','MS','AL','GA','SC'];
-    if (vibeAnswers.climate === 'cold_ok' && coldStates.includes(schoolState)) vibeMatch += 3;
-    if (vibeAnswers.climate === 'warm_pref' && warmStates.includes(schoolState)) vibeMatch += 3;
-    
-    // Social vibe
-    if (vibeAnswers.social === 'large_social' && enrollment > 20000) vibeMatch += 2;
-    if (vibeAnswers.social === 'small_social' && enrollment < 5000) vibeMatch += 2;
-
-    // Aesthetic
-    if (vibeAnswers.aesthetic === 'traditional' && admRate && admRate < 0.3) vibeMatch += 2;
-    if (vibeAnswers.aesthetic === 'modern' && enrollment > 15000) vibeMatch += 2;
-
-    score += Math.min(vibeMatch, 20);
+    if (vibeAnswers.climate === 'cold_ok' && coldStates.includes(schoolState)) vibeMatch += 2;
+    if (vibeAnswers.climate === 'warm_pref' && warmStates.includes(schoolState)) vibeMatch += 2;
+    if (vibeAnswers.social === 'large_social' && enrollment > 20000) vibeMatch += 1;
+    if (vibeAnswers.social === 'small_social' && enrollment < 5000) vibeMatch += 1;
+    score += Math.min(vibeMatch, 15);
   } else {
-    score += 8; // neutral base
+    score += 6;
   }
 
-  // 4. Club-to-major alignment (max 10 pts)
+  // 4. Club-to-major alignment (max 8 pts)
   const clubStr = userClubs.join(" ").toLowerCase();
   const m = major.toLowerCase();
   let clubMatch = 0;
-  if ((m.includes("computer") || m.includes("tech") || m.includes("data") || m.includes("cyber") || m.includes("software") || m.includes("ai")) && (clubStr.includes("programming") || clubStr.includes("robotics") || clubStr.includes("git") || clubStr.includes("stem") || clubStr.includes("game development"))) clubMatch += 4;
-  if ((m.includes("bus") || m.includes("financ") || m.includes("econ") || m.includes("market") || m.includes("entrepreneur")) && (clubStr.includes("fbla") || clubStr.includes("women in business") || clubStr.includes("investment"))) clubMatch += 4;
-  if ((m.includes("health") || m.includes("med") || m.includes("nurse") || m.includes("pharm")) && (clubStr.includes("healthcare") || clubStr.includes("red cross"))) clubMatch += 4;
-  if ((m.includes("law") || m.includes("legal") || m.includes("politic")) && (clubStr.includes("mock trial") || clubStr.includes("debate") || clubStr.includes("model united nations"))) clubMatch += 4;
-  if (m.includes("engineer") && (clubStr.includes("robotics") || clubStr.includes("stem") || clubStr.includes("olympiad"))) clubMatch += 4;
-  if ((m.includes("art") || m.includes("design") || m.includes("music") || m.includes("theater") || m.includes("film")) && (clubStr.includes("art") || clubStr.includes("theatre") || clubStr.includes("music") || clubStr.includes("media"))) clubMatch += 4;
-  if ((m.includes("enviro") || m.includes("climate") || m.includes("sustain")) && (clubStr.includes("environmental") || clubStr.includes("climate") || clubStr.includes("green"))) clubMatch += 4;
-  if ((m.includes("psych") || m.includes("social") || m.includes("counsel")) && (clubStr.includes("do something") || clubStr.includes("unicef"))) clubMatch += 3;
-  if ((m.includes("english") || m.includes("writing") || m.includes("journal") || m.includes("commun")) && (clubStr.includes("creative writing") || clubStr.includes("journalism") || clubStr.includes("english honor"))) clubMatch += 4;
-  if ((m.includes("sport") || m.includes("kinesi") || m.includes("athletic")) && userSports.length > 0) clubMatch += 3;
-  score += Math.min(clubMatch, 10);
+  if ((m.includes("computer") || m.includes("tech") || m.includes("data") || m.includes("cyber") || m.includes("software")) && (clubStr.includes("programming") || clubStr.includes("robotics") || clubStr.includes("stem"))) clubMatch += 4;
+  if ((m.includes("bus") || m.includes("financ") || m.includes("econ") || m.includes("market")) && (clubStr.includes("fbla") || clubStr.includes("business") || clubStr.includes("investment"))) clubMatch += 4;
+  if ((m.includes("health") || m.includes("med") || m.includes("nurse")) && (clubStr.includes("healthcare") || clubStr.includes("red cross"))) clubMatch += 4;
+  if ((m.includes("law") || m.includes("politic")) && (clubStr.includes("mock trial") || clubStr.includes("debate") || clubStr.includes("model united nations"))) clubMatch += 4;
+  if (m.includes("engineer") && (clubStr.includes("robotics") || clubStr.includes("stem"))) clubMatch += 4;
+  if ((m.includes("art") || m.includes("music") || m.includes("theater") || m.includes("film")) && (clubStr.includes("art") || clubStr.includes("theatre") || clubStr.includes("music"))) clubMatch += 4;
+  if ((m.includes("english") || m.includes("journal")) && (clubStr.includes("creative writing") || clubStr.includes("journalism"))) clubMatch += 4;
+  score += Math.min(clubMatch, 8);
 
-  // 5. Extracurricular depth (max 8 pts)
-  const ecCount = userExtracurriculars.length + userSports.length;
-  if (ecCount >= 8) score += 8;
-  else if (ecCount >= 5) score += 6;
-  else if (ecCount >= 3) score += 4;
-  else if (ecCount >= 1) score += 2;
+  // 5. Extracurricular depth + leadership (max 8 pts)
+  const ecCount = userExtracurriculars.length + userSports.length + userClubs.length;
+  let ecScore = 0;
+  if (ecCount >= 8) ecScore += 5;
+  else if (ecCount >= 5) ecScore += 4;
+  else if (ecCount >= 3) ecScore += 3;
+  else if (ecCount >= 1) ecScore += 1;
+  const leadStr = (userClubs.join(" ") + " " + userExtracurriculars.join(" ") + " " + userAchievements.join(" ")).toLowerCase();
+  if (/\b(president|captain|founder|leader|director|chair)\b/.test(leadStr)) ecScore += 3;
+  // Selective schools care more about EC depth
+  if (admRate && admRate < 0.25) ecScore = Math.min(8, ecScore * 1.2);
+  score += Math.min(ecScore, 8);
 
-  // 6. Interests alignment (max 5 pts)
-  if (userInterests.length > 0) {
-    const interestStr = userInterests.join(" ").toLowerCase();
-    if (programPct > 0.05 && (interestStr.includes(m) || m.includes(interestStr.split(" ")[0]))) score += 3;
-    if (userInterests.length >= 3) score += 2;
+  // 6. Achievements signal (max 4 pts)
+  if (userAchievements.length >= 5) score += 4;
+  else if (userAchievements.length >= 3) score += 3;
+  else if (userAchievements.length >= 1) score += 2;
+
+  // 7. Service hours civic-fit (max 3 pts)
+  if (serviceHours >= 100) score += 3;
+  else if (serviceHours >= 50) score += 2;
+  else if (serviceHours >= 24) score += 1;
+
+  // 8. Sport / athletic-division alignment (max 4 pts)
+  if (userSports.length > 0 && athleticDivision && athleticDivision !== "Unknown" && athleticDivision !== "None") {
+    score += athleticDivision === "D1" ? 4 : athleticDivision === "D2" ? 3 : athleticDivision === "D3" ? 2 : 2;
   }
 
-  // 7. Distance proximity bonus (max 7 pts) — closer is better for most students
-  if (miles < 20) score += 7;
-  else if (miles < 50) score += 6;
-  else if (miles < 100) score += 5;
+  // 9. Interests alignment (max 3 pts)
+  if (userInterests.length > 0) {
+    const interestStr = userInterests.join(" ").toLowerCase();
+    if (programPct > 0.05 && (interestStr.includes(m) || m.includes(interestStr.split(" ")[0]))) score += 2;
+    if (userInterests.length >= 3) score += 1;
+  }
+
+  // 10. Distance proximity (max 5 pts)
+  if (miles < 50) score += 5;
   else if (miles < 200) score += 4;
-  else if (miles < 400) score += 3;
-  else if (miles < 800) score += 2;
+  else if (miles < 500) score += 3;
+  else if (miles < 1000) score += 2;
   else score += 1;
 
-  // Total max possible = 30 + 20 + 20 + 10 + 8 + 5 + 7 = 100
-  return Math.min(99, Math.max(1, score));
+  // 11. Chance-of-admission multiplier — far-reach schools get demoted (not removed)
+  const chance = estimateChancePct(admRate, satAvg, userSat, gpa, testOptional);
+  if (chance !== null) {
+    if (chance >= 50) score *= 1.0;
+    else if (chance >= 25) score *= 0.95;
+    else if (chance >= 10) score *= 0.85;
+    else if (chance >= 3) score *= 0.75;
+    else score *= 0.6;
+  }
+
+  // Total max ≈ 100
+  return Math.min(99, Math.max(1, Math.round(score)));
 }
 
 export interface SearchFilters {
@@ -486,17 +472,29 @@ export async function searchColleges(
 
   const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
 
+  // When an MSI/Women's filter is active, query Scorecard directly with that flag
+  // so we surface schools that wouldn't make the top-100-by-admit-rate cut.
+  const msiQueryParam: Record<string, string> = {
+    hbcu: "school.minority_serving.historically_black=1",
+    hsi: "school.minority_serving.hispanic=1",
+    aanapisi: "school.minority_serving.aanapii=1",
+    tcu: "school.minority_serving.tribal=1",
+    womens: "school.women_only=1",
+  };
+  const msiFlag = filters.msiFilter && filters.msiFilter !== "all" && filters.msiFilter !== "pwi"
+    ? msiQueryParam[filters.msiFilter] : undefined;
+
   const buildUrl = (page: number, perPage: number) => {
-    // When searching by name, drop the bachelor's-only restriction so specialty/grad-heavy
-    // schools surface; when browsing, keep predominant=3 to focus on undergrad institutions.
-    const predominant = hasSearchQuery ? "" : "&school.degrees_awarded.predominant=3";
+    // When searching by name OR filtering by MSI, drop the bachelor's-only restriction.
+    const predominant = (hasSearchQuery || msiFlag) ? "" : "&school.degrees_awarded.predominant=3";
     let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1${predominant}&fields=${fields}&per_page=${perPage}&page=${page}`;
-    // Sort by selectivity only when not searching; when searching, let API relevance + our client-side rank decide.
-    if (!hasSearchQuery) url += `&sort=latest.admissions.admission_rate.overall:asc`;
+    // Sort by selectivity only when not searching/filtering by MSI; otherwise let API relevance decide.
+    if (!hasSearchQuery && !msiFlag) url += `&sort=latest.admissions.admission_rate.overall:asc`;
     if (filters.stateFilter === "maryland" && !hasSearchQuery) url += "&school.state=MD";
     if (hasSearchQuery) {
       url += `&school.search=${encodeURIComponent(filters.searchQuery!.trim())}`;
     }
+    if (msiFlag) url += `&${msiFlag}`;
     return url;
   };
 
@@ -504,7 +502,7 @@ export async function searchColleges(
   const wantUS = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "us";
   const wantIntl = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "intl";
 
-  const pages = hasSearchQuery ? [0, 1, 2] : [0];
+  const pages = (hasSearchQuery || msiFlag) ? [0, 1, 2] : [0];
   const perPage = 100;
   const allResults: any[] = [];
   if (wantUS) {
@@ -570,9 +568,7 @@ export async function searchColleges(
       if (c['school.minority_serving.hispanic'] === 1) msi.push("HSI");
       if (c['school.minority_serving.aanapii'] === 1) msi.push("AANAPISI");
       if (c['school.minority_serving.tribal'] === 1) msi.push("TCU");
-      if (c['school.minority_serving.annh'] === 1) msi.push("ANNH");
-      if (c['school.minority_serving.nant'] === 1) msi.push("NANTI");
-      if (c['school.minority_serving.predominantly_black'] === 1) msi.push("PBI");
+      // ANNH and PBI intentionally excluded per product decision
       if (womenOnly) msi.push("Women's College");
       if (menOnly) msi.push("Men's College");
       if (msi.length === 0) msi.push("PWI");
@@ -585,7 +581,7 @@ export async function searchColleges(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(name)),
         size,
         enrollment,
         costInState,
@@ -1154,7 +1150,7 @@ export async function getCollegesByIds(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(c['school.name'])),
         size: getSchoolSize(enrollment),
         enrollment,
         costInState: c['latest.cost.tuition.in_state'] || null,

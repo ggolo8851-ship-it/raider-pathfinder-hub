@@ -15,6 +15,15 @@ import EssayPage from "@/components/EssayPage";
 import GraduationPage from "@/components/GraduationPage";
 import FacultyPage from "@/components/FacultyPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import CustomTabPage from "@/components/CustomTabPage";
+import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
+
+const CustomTabRouter = ({ slug }: { slug: string }) => {
+  const [tab, setTab] = useState<CustomTab | null>(null);
+  useEffect(() => { fetchPublishedTabs().then(tabs => setTab(tabs.find(t => t.slug === slug) || null)); }, [slug]);
+  if (!tab) return <div className="max-w-4xl mx-auto py-10 px-5 text-muted-foreground">Loading…</div>;
+  return <CustomTabPage tab={tab} />;
+};
 
 const Index = () => {
   const { session, user: authUser, isAdmin, isBlocked, loading } = useAuth();
@@ -110,6 +119,7 @@ const Index = () => {
       {page === "transcripts" && <TranscriptsPage />}
       {page === "graduation" && <GraduationPage />}
       {page === "faculty" && <FacultyPage />}
+      {page.startsWith("custom:") && <CustomTabRouter slug={page.slice(7)} />}
     </div>
   );
 };

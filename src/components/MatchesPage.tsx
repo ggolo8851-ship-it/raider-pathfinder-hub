@@ -194,7 +194,14 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance:</b> {c.miles.toFixed(1)} miles {distanceLabel}</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
-          {c.chancePct != null && <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>}
+          {c.chancePct != null && (
+            <>
+              <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-r p-2 text-xs text-foreground">
+                ⚠️ This estimate uses only your GPA, test scores, and the school's admit rate. It does <b>not</b> account for your essays, recommendation letters, interviews, demonstrated interest, or unique background — your real chances may be meaningfully better than the number shown.
+              </div>
+            </>
+          )}
           {c.setting && <p><b>🌆 Setting:</b> {c.setting}</p>}
           {c.athleticDivision && c.athleticDivision !== "Unknown" && <p><b>🏟️ Athletics:</b> {c.athleticDivision}</p>}
           {c.country && c.country !== "USA" && <p><b>🌍 Country:</b> {c.country}</p>}
@@ -246,7 +253,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (YouTube) ↗</a>
+            <a href={`https://www.niche.com/colleges/${encodeURIComponent(c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))}/visit/`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (Niche) ↗</a>
             <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🏆 Niche Ranking ↗</a>
             {(() => {
               let domain = "";
@@ -427,8 +434,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="hsi">HSI (Hispanic-Serving)</option>
                     <option value="aanapisi">AANAPISI (AAPI-Serving)</option>
                     <option value="tcu">TCU (Tribal Colleges)</option>
-                    <option value="annh">ANNH (Alaska Native/Native Hawaiian)</option>
-                    <option value="pbi">PBI (Predominantly Black)</option>
                     <option value="pwi">PWI (Predominantly White)</option>
                   </select>
                 </div>
