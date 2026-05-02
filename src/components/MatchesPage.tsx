@@ -21,7 +21,9 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [athleticFilter, setAthleticFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [testPolicyFilter, setTestPolicyFilter] = useState("all");
+  const [msiFilter, setMsiFilter] = useState("all");
   const [collegeSearch, setCollegeSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [careers, setCareers] = useState<CareerMatch[]>([]);
