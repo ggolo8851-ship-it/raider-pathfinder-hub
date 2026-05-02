@@ -89,6 +89,7 @@ export interface CollegeResult {
   tier: "Safety" | "Target" | "Possible Reach" | "Far Reach";
   id: string;
   vibeScore?: number;
+  aiReason?: string;
   demographics?: {
     white: number;
     black: number;
