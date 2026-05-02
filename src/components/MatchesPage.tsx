@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { searchColleges, getCareerMatches, getCollegesByIds, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
+import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 
