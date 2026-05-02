@@ -253,7 +253,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (YouTube) ↗</a>
+            <a href={`https://www.niche.com/colleges/${encodeURIComponent(c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))}/visit/`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (Niche) ↗</a>
             <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🏆 Niche Ranking ↗</a>
             {(() => {
               let domain = "";
