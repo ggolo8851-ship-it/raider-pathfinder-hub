@@ -367,6 +367,7 @@ export interface SearchFilters {
   athleticFilter?: string;        // d1/d2/d3/naia/none
   countryFilter?: string;         // us/intl/all
   testPolicyFilter?: string;      // required/optional/blind/all
+  msiFilter?: string;             // hbcu/hsi/aanapisi/tcu/womens/pwi/all
   searchQuery?: string;
 }
 
