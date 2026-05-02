@@ -93,6 +93,8 @@ export interface CollegeResult {
   id: string;
   vibeScore?: number;
   aiReason?: string;
+  avgSalary10yr?: number | null;     // College Scorecard median earnings 10yr after entry
+  testPolicy?: "required" | "optional" | "blind" | "unknown";
   // NEW fields
   setting?: string;                 // Urban / Suburban / Small Town / Rural / Unknown
   bestKnownPrograms?: string[];     // top 2-3 programs
@@ -361,6 +363,7 @@ export interface SearchFilters {
   classificationFilter?: string;  // tier1/tier2/tier3/tier4 (prestige class)
   athleticFilter?: string;        // d1/d2/d3/naia/none
   countryFilter?: string;         // us/intl/all
+  testPolicyFilter?: string;      // required/optional/blind/all
   searchQuery?: string;
 }
 
@@ -441,6 +444,9 @@ export async function searchColleges(
     "latest.cost.tuition.in_state", "latest.cost.tuition.out_of_state",
     "latest.admissions.admission_rate.overall",
     "latest.admissions.sat_scores.average.overall",
+    "latest.admissions.test_requirements",
+    "latest.earnings.10_yrs_after_entry.median",
+    "latest.earnings.6_yrs_after_entry.median",
     "latest.student.demographics.race_ethnicity.white",
     "latest.student.demographics.race_ethnicity.black",
     "latest.student.demographics.race_ethnicity.hispanic",
@@ -524,6 +530,11 @@ export async function searchColleges(
       const satAvg = c['latest.admissions.sat_scores.average.overall'] || null;
       const programPct = c[queryField] || 0;
       const name = c['school.name'];
+      const salary10 = c['latest.earnings.10_yrs_after_entry.median'] ?? c['latest.earnings.6_yrs_after_entry.median'] ?? null;
+      // Test requirements code: 1=required, 3=considered but not required (optional), 5=not used (blind)
+      const trCode = c['latest.admissions.test_requirements'];
+      const testPolicy: "required" | "optional" | "blind" | "unknown" =
+        trCode === 1 ? "required" : trCode === 3 ? "optional" : trCode === 5 ? "blind" : "unknown";
 
       const demographics = {
         white: Math.round((c['latest.student.demographics.race_ethnicity.white'] || 0) * 100),
@@ -558,6 +569,8 @@ export async function searchColleges(
         athleticDivision: classifyAthletics(name),
         classification: classifyTier(name, enrollment, admRate),
         chancePct: estimateChancePct(admRate, satAvg, userSat, gpaNum, testOptional),
+        avgSalary10yr: salary10,
+        testPolicy,
         demographics,
       };
     })
@@ -640,9 +653,24 @@ export async function searchColleges(
       if (filters.countryFilter === "us" && c.isInternational) return false;
       if (filters.countryFilter === "intl" && !c.isInternational) return false;
 
+      // NEW: test-policy filter (required / optional / blind)
+      if (filters.testPolicyFilter && filters.testPolicyFilter !== "all") {
+        if ((c.testPolicy || "unknown") !== filters.testPolicyFilter) return false;
+      }
+
       return true;
     })
-    .sort((a, b) => b.fitScore - a.fitScore);
+    .sort((a, b) => {
+      // When user is searching by name, prioritize closer name matches first.
+      if (hasSearchQuery) {
+        const q = filters.searchQuery!.trim().toLowerCase();
+        const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+        const aRank = an === q ? 0 : an.startsWith(q) ? 1 : an.includes(q) ? 2 : 3;
+        const bRank = bn === q ? 0 : bn.startsWith(q) ? 1 : bn.includes(q) ? 2 : 3;
+        if (aRank !== bRank) return aRank - bRank;
+      }
+      return b.fitScore - a.fitScore;
+    });
 }
 
 // AI re-rank wrapper: given the user's full profile and a list of CollegeResults,

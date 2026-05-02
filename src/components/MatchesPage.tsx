@@ -20,6 +20,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [classificationFilter, setClassificationFilter] = useState("all");
   const [athleticFilter, setAthleticFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
+  const [testPolicyFilter, setTestPolicyFilter] = useState("all");
   const [collegeSearch, setCollegeSearch] = useState("");
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +62,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     if (tab === "colleges") {
       setLoading(true);
       const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, searchQuery: collegeSearch };
+      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, searchQuery: collegeSearch };
       searchColleges(
         profile.major, filters, email, profile.gpa, profile.aps,
         profile.clubs || [], profile.sat || "", profile.act || "",
@@ -87,7 +88,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         .catch(() => setColleges([]))
         .finally(() => setLoading(false));
     }
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, collegeSearch, email]);
+  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, collegeSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
@@ -151,6 +152,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             {c.costInState && <>In-state: ${c.costInState.toLocaleString()}/yr</>}
           </p>
           {c.satAvg && <p className="text-xs text-muted-foreground">Avg SAT: {c.satAvg} {c.admissionRate && <>• Admit Rate: {(c.admissionRate * 100).toFixed(0)}%</>}</p>}
+          {c.avgSalary10yr != null && <p className="text-xs text-muted-foreground">💵 Median grad salary: ${c.avgSalary10yr.toLocaleString()}/yr</p>}
         </div>
         <div className="flex flex-col gap-2 items-end shrink-0">
           <button onClick={() => toggleBookmark(c.id)} className="text-2xl" title="Bookmark">
@@ -183,6 +185,12 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           {c.bestKnownPrograms && c.bestKnownPrograms.length > 0 && (
             <p><b>⭐ Best Known For:</b> {c.bestKnownPrograms.slice(0, 3).join(", ")}</p>
           )}
+          {c.avgSalary10yr != null && (
+            <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
+          )}
+          {c.testPolicy && c.testPolicy !== "unknown" && (
+            <p><b>📝 Test Policy:</b> {c.testPolicy === "required" ? "SAT/ACT Required" : c.testPolicy === "optional" ? "Test-Optional" : "Test-Blind"}</p>
+          )}
           {profile.testOptional && <p className="text-xs text-secondary font-semibold">📝 Classified as test-optional student — SAT not weighted in tier calculation</p>}
           
           {c.demographics && (
@@ -214,7 +222,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
             <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(c.name + " campus tour")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🎥 Virtual Tour (YouTube) ↗</a>
             <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">🏆 Niche Ranking ↗</a>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " 2024 2025 common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set ↗</a>
+            {(() => {
+              let domain = "";
+              try { domain = new URL(c.url).hostname.replace(/^www\./, ""); } catch {}
+              const cdsQ = domain
+                ? `site:${domain} "common data set" filetype:pdf`
+                : `${c.name} latest common data set filetype:pdf`;
+              return (
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(cdsQ)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set (PDF) ↗</a>
+              );
+            })()}
             <a href={`https://collegescorecard.ed.gov/school?id=${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">💰 Salary Data ↗</a>
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
@@ -328,7 +345,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">Prestige Class</label>
                   <select value={classificationFilter} onChange={e => setClassificationFilter(e.target.value)}
@@ -359,6 +376,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="all">US + International</option>
                     <option value="us">United States Only</option>
                     <option value="intl">International Only</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Test Policy</label>
+                  <select value={testPolicyFilter} onChange={e => setTestPolicyFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">Any Test Policy</option>
+                    <option value="required">SAT/ACT Required</option>
+                    <option value="optional">Test-Optional</option>
+                    <option value="blind">Test-Blind</option>
                   </select>
                 </div>
               </div>
