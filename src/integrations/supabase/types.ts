@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_nicknames: {
+        Row: {
+          admin_user_id: string
+          assigned_by: string | null
+          created_at: string
+          nickname: string
+          updated_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          assigned_by?: string | null
+          created_at?: string
+          nickname: string
+          updated_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          assigned_by?: string | null
+          created_at?: string
+          nickname?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_whitelist: {
         Row: {
           added_by: string | null
@@ -131,6 +155,45 @@ export type Database = {
         }
         Relationships: []
       }
+      college_overrides: {
+        Row: {
+          cds_url: string | null
+          college_id: string
+          created_at: string
+          known_programs: string[]
+          notes: string | null
+          official_url: string | null
+          rankings: Json
+          tier: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cds_url?: string | null
+          college_id: string
+          created_at?: string
+          known_programs?: string[]
+          notes?: string | null
+          official_url?: string | null
+          rankings?: Json
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cds_url?: string | null
+          college_id?: string
+          created_at?: string
+          known_programs?: string[]
+          notes?: string | null
+          official_url?: string | null
+          rankings?: Json
+          tier?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       email_blacklist: {
         Row: {
           added_by: string | null
@@ -161,6 +224,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string
+          flagged: boolean
           grad_year: number | null
           id: string
           profile_data: Json
@@ -174,6 +238,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email: string
+          flagged?: boolean
           grad_year?: number | null
           id?: string
           profile_data?: Json
@@ -187,6 +252,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string
+          flagged?: boolean
           grad_year?: number | null
           id?: string
           profile_data?: Json
@@ -218,6 +284,33 @@ export type Database = {
           id?: string
           ip?: string | null
           succeeded?: boolean
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          dropdown_links: Json
+          homepage_hero: Json
+          id: string
+          logo_url: string | null
+          mobile_spacing: Json
+          updated_at: string
+        }
+        Insert: {
+          dropdown_links?: Json
+          homepage_hero?: Json
+          id: string
+          logo_url?: string | null
+          mobile_spacing?: Json
+          updated_at?: string
+        }
+        Update: {
+          dropdown_links?: Json
+          homepage_hero?: Json
+          id?: string
+          logo_url?: string | null
+          mobile_spacing?: Json
+          updated_at?: string
         }
         Relationships: []
       }
