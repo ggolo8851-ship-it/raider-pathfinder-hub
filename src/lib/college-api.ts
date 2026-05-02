@@ -570,9 +570,7 @@ export async function searchColleges(
       if (c['school.minority_serving.hispanic'] === 1) msi.push("HSI");
       if (c['school.minority_serving.aanapii'] === 1) msi.push("AANAPISI");
       if (c['school.minority_serving.tribal'] === 1) msi.push("TCU");
-      if (c['school.minority_serving.annh'] === 1) msi.push("ANNH");
-      if (c['school.minority_serving.nant'] === 1) msi.push("NANTI");
-      if (c['school.minority_serving.predominantly_black'] === 1) msi.push("PBI");
+      // ANNH and PBI intentionally excluded per product decision
       if (womenOnly) msi.push("Women's College");
       if (menOnly) msi.push("Men's College");
       if (msi.length === 0) msi.push("PWI");
