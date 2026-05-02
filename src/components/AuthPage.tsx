@@ -1,25 +1,31 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword, verifyPasswordReset } from "@/lib/auth";
+import {
+  signInWithEmail, signUpWithEmail, signInWithGoogle,
+  resetPasswordWithSecurityCode, setSecurityCode,
+} from "@/lib/auth";
 import { toast } from "sonner";
 
 interface AuthPageProps {
   onLogin: () => void;
 }
 
-type View = "login" | "signup" | "forgot" | "reset";
+type View = "login" | "signup" | "forgot";
 
 const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [view, setView] = useState<View>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [resetCode, setResetCode] = useState("");
+  const [securityCode, setSecCode] = useState("");
+  const [securityCodeConfirm, setSecCodeConfirm] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const validSecCode = (c: string) => c.length >= 6 && /^[A-Za-z0-9!@#$%^&*_-]+$/.test(c);
 
   const handleLogin = async () => {
     setError(""); setLoading(true);
@@ -37,10 +43,20 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
   };
 
   const handleSignup = async () => {
-    setError(""); setLoading(true);
-    const { error } = await signUpWithEmail(email.trim().toLowerCase(), password, fullName);
-    setLoading(false);
+    setError("");
+    if (!validSecCode(securityCode)) {
+      setError("Security code must be at least 6 characters (letters, numbers, or !@#$%^&*_-).");
+      return;
+    }
+    if (securityCode !== securityCodeConfirm) {
+      setError("Security codes don't match.");
+      return;
+    }
+    setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await signUpWithEmail(cleanEmail, password, fullName);
     if (error) {
+      setLoading(false);
       if (error.message.toLowerCase().includes("blocked")) {
         setError("This email has been blocked from creating an account.");
       } else {
@@ -48,7 +64,23 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
       }
       return;
     }
-    toast.success("Account created — signing you in...");
+    // Sign in to get a session, then store the security code
+    const signIn = await signInWithEmail(cleanEmail, password);
+    if (signIn.error) {
+      setLoading(false);
+      // Account exists but couldn't auto sign in (e.g., email confirm required)
+      toast.success("Account created. Sign in to set your security code.");
+      setView("login");
+      return;
+    }
+    const { error: codeErr } = await setSecurityCode(securityCode);
+    setLoading(false);
+    if (codeErr) {
+      // Don't block the user — they can set it later in Settings
+      toast.error("Account created, but couldn't save security code. Set it later from your profile.");
+    } else {
+      toast.success("Account created — remember your security code, you'll need it if you forget your password.");
+    }
     onLogin();
   };
 
@@ -56,29 +88,29 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     setError("");
     const result = await signInWithGoogle();
     if (result.error) setError(result.error.message);
-    // result.redirected: browser navigates away
   };
 
-  const handleReset = async () => {
-    setError(""); setLoading(true);
-    const { error } = await resetPassword(email.trim().toLowerCase());
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    toast.success("If that email exists, a 6-digit code is on its way.");
-    setView("reset");
-  };
-
-  const handleVerifyReset = async () => {
+  const handleResetWithCode = async () => {
     setError("");
-    if (newPassword.length < 6) { setError("Password must be at least 6 characters."); return; }
-    if (newPassword !== confirmPassword) { setError("Passwords don't match."); return; }
-    if (!/^\d{6}$/.test(resetCode.trim())) { setError("Enter the 6-digit code from your email."); return; }
+    if (!email || !securityCode || !newPassword) {
+      setError("Fill in all fields.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
     setLoading(true);
-    const { error } = await verifyPasswordReset(email.trim().toLowerCase(), resetCode.trim(), newPassword);
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await resetPasswordWithSecurityCode(cleanEmail, securityCode, newPassword);
     setLoading(false);
     if (error) { setError(error.message); return; }
     toast.success("Password updated. Signing you in...");
-    const { error: signInErr } = await signInWithEmail(email.trim().toLowerCase(), newPassword);
+    const { error: signInErr } = await signInWithEmail(cleanEmail, newPassword);
     if (signInErr) { setView("login"); return; }
     onLogin();
   };
@@ -117,6 +149,19 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
             <Input placeholder="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} className="mb-3" autoComplete="name" />
             <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
             <Input type="password" placeholder="Password (min 6 chars)" value={password} onChange={e => setPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
+
+            <div className="bg-muted/40 rounded-lg p-3 mb-3 text-left">
+              <p className="text-xs font-semibold text-primary mb-1">🔐 Security Code</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Pick a code only you'll remember (min 6 chars). If you ever forget your password,
+                you'll use this code to reset it — no email required.
+              </p>
+              <Input type="password" placeholder="Security code" value={securityCode}
+                onChange={e => setSecCode(e.target.value)} className="mb-2" autoComplete="off" />
+              <Input type="password" placeholder="Confirm security code" value={securityCodeConfirm}
+                onChange={e => setSecCodeConfirm(e.target.value)} autoComplete="off" />
+            </div>
+
             <p className="text-xs text-muted-foreground mb-4">Your browser may offer to save your password — this is recommended.</p>
             <Button onClick={handleSignup} disabled={loading} className="w-full mb-3">{loading ? "Creating..." : "Register"}</Button>
             <Button onClick={handleGoogle} variant="outline" className="w-full mb-3">Continue with Google</Button>
@@ -127,28 +172,22 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
         {view === "forgot" && (
           <>
             <h2 className="text-xl font-semibold text-primary mb-4">Reset Password</h2>
-            <p className="text-sm text-muted-foreground mb-3">We'll email you a 6-digit code to reset your password.</p>
-            <Input placeholder="Your Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Button onClick={handleReset} disabled={loading} className="w-full mb-3">{loading ? "Sending..." : "Send Reset Code"}</Button>
-            <button onClick={() => { setView("reset"); setError(""); }} className="text-sm text-secondary underline block mb-2">I already have a code</button>
-            <button onClick={() => { setView("login"); setError(""); }} className="text-sm text-muted-foreground underline">Cancel</button>
-          </>
-        )}
-
-        {view === "reset" && (
-          <>
-            <h2 className="text-xl font-semibold text-primary mb-4">Enter Reset Code</h2>
-            <p className="text-sm text-muted-foreground mb-3">Enter the 6-digit code sent to your email and choose a new password. Code expires in 15 minutes.</p>
-            <Input placeholder="Your Email" value={email} onChange={e => setEmail(e.target.value)} className="mb-3" autoComplete="email" />
-            <Input placeholder="6-digit code" value={resetCode} onChange={e => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mb-3 text-center tracking-widest text-lg" inputMode="numeric" maxLength={6} />
+            <p className="text-sm text-muted-foreground mb-3">
+              Enter your email, your <b>security code</b>, and a new password.
+            </p>
+            <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
+              className="mb-3" autoComplete="email" />
+            <Input type="password" placeholder="Your security code" value={securityCode}
+              onChange={e => setSecCode(e.target.value)} className="mb-3" autoComplete="off" />
             <Input type="password" placeholder="New password (min 6 chars)" value={newPassword}
               onChange={e => setNewPassword(e.target.value)} className="mb-3" autoComplete="new-password" />
             <Input type="password" placeholder="Confirm new password" value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)} className="mb-3" autoComplete="new-password"
-              onKeyDown={e => e.key === "Enter" && handleVerifyReset()} />
-            <Button onClick={handleVerifyReset} disabled={loading} className="w-full mb-3">{loading ? "Updating..." : "Reset Password"}</Button>
-            <button onClick={() => { setView("forgot"); setError(""); }} className="text-sm text-muted-foreground underline">Back</button>
+              onKeyDown={e => e.key === "Enter" && handleResetWithCode()} />
+            <Button onClick={handleResetWithCode} disabled={loading} className="w-full mb-3">
+              {loading ? "Resetting..." : "Reset Password"}
+            </Button>
+            <button onClick={() => { setView("login"); setError(""); }} className="text-sm text-muted-foreground underline">Cancel</button>
           </>
         )}
       </div>

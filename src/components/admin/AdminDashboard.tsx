@@ -10,7 +10,7 @@ interface Props {
   onLogout: () => void;
 }
 
-type Section = "dashboard" | "access" | "users" | "clubs" | "subs" | "logs";
+type Section = "dashboard" | "access" | "users" | "clubs" | "logs";
 
 const AdminDashboard = ({ onExit, onLogout }: Props) => {
   const { user } = useAuth();
@@ -28,7 +28,6 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
           ["access", "🔐 Access Control"],
           ["users", "👥 Users"],
           ["clubs", "🏫 Clubs"],
-          ["subs", "📧 Subscribers"],
           ["logs", "📜 Audit Log"],
         ].map(([id, label]) => (
           <button key={id} onClick={() => setSection(id as Section)}
@@ -46,7 +45,6 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
         {section === "access" && <AccessControl currentEmail={user?.email ?? ""} />}
         {section === "users" && <UsersPanel />}
         {section === "clubs" && <ClubsPanel />}
-        {section === "subs" && <SubsPanel />}
         {section === "logs" && <LogsPanel />}
       </main>
     </div>
@@ -54,23 +52,22 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
 };
 
 function Overview() {
-  const [stats, setStats] = useState({ users: 0, admins: 0, blocked: 0, subs: 0, clubs: 0 });
+  const [stats, setStats] = useState({ users: 0, admins: 0, blocked: 0, clubs: 0 });
   useEffect(() => {
     (async () => {
-      const [u, a, b, s, c] = await Promise.all([
+      const [u, a, b, c] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_blacklist").select("id", { count: "exact", head: true }),
-        supabase.from("email_subscriptions").select("id", { count: "exact", head: true }),
         supabase.from("clubs").select("id", { count: "exact", head: true }),
       ]);
-      setStats({ users: u.count ?? 0, admins: a.count ?? 0, blocked: b.count ?? 0, subs: s.count ?? 0, clubs: c.count ?? 0 });
+      setStats({ users: u.count ?? 0, admins: a.count ?? 0, blocked: b.count ?? 0, clubs: c.count ?? 0 });
     })();
   }, []);
   return (
     <div>
       <h1 className="text-2xl font-bold text-primary mb-6">Admin Overview</h1>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Object.entries(stats).map(([k, v]) => (
           <div key={k} className="bg-card p-4 rounded-xl shadow-sm border border-border">
             <div className="text-xs uppercase text-muted-foreground">{k}</div>
@@ -247,30 +244,6 @@ function ClubsPanel() {
               <td className="p-3">{c.classification}</td>
               <td className="p-3">{c.meeting_day}</td>
               <td className="p-3 text-muted-foreground">{c.sponsor}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function SubsPanel() {
-  const [subs, setSubs] = useState<any[]>([]);
-  useEffect(() => {
-    supabase.from("email_subscriptions").select("*").order("created_at", { ascending: false }).then(({ data }) => setSubs(data ?? []));
-  }, []);
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-primary mb-4">Email Subscribers ({subs.length})</h1>
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left"><tr><th className="p-3">Email</th><th className="p-3">Welcome Sent</th><th className="p-3">Joined</th></tr></thead>
-          <tbody>{subs.map(s => (
-            <tr key={s.id} className="border-t border-border">
-              <td className="p-3">{s.email}</td>
-              <td className="p-3">{s.welcome_sent ? "✅" : "⏳"}</td>
-              <td className="p-3 text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</td>
             </tr>
           ))}</tbody>
         </table>

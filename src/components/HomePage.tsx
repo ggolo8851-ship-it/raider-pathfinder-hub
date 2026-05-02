@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
-import EmailSubscriptionBox from "@/components/EmailSubscriptionBox";
+
 
 interface HomePageProps {
   username: string;
@@ -174,8 +174,6 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
             <p className="text-sm text-muted-foreground">Achievements</p>
           </div>
         </div>
-
-        <EmailSubscriptionBox email={email} gradYear={gradYear} />
       </div>
     </div>
   );

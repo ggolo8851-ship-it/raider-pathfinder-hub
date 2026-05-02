@@ -27,23 +27,36 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-export async function resetPassword(email: string) {
-  // Custom code-based reset via Resend
-  const { data, error } = await supabase.functions.invoke("request-password-reset", {
-    body: { email },
+/** Set or rotate the logged-in user's security code (used to recover password without email). */
+export async function setSecurityCode(newCode: string, currentCode?: string) {
+  const { data, error } = await supabase.functions.invoke("set-security-code", {
+    body: { newCode, currentCode },
   });
   if (error) return { error };
   if (data?.error) return { error: new Error(data.error) };
   return { error: null };
 }
 
-export async function verifyPasswordReset(email: string, code: string, newPassword: string) {
-  const { data, error } = await supabase.functions.invoke("verify-password-reset", {
-    body: { email, code, newPassword },
+/** Reset the password using email + the user's security code. */
+export async function resetPasswordWithSecurityCode(email: string, securityCode: string, newPassword: string) {
+  const { data, error } = await supabase.functions.invoke("verify-security-code-reset", {
+    body: { email, securityCode, newPassword },
   });
   if (error) return { error };
   if (data?.error) return { error: new Error(data.error) };
   return { error: null };
+}
+
+/** Returns true if the logged-in user has a security code on file. */
+export async function hasSecurityCode(): Promise<boolean> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return false;
+  const { data } = await supabase
+    .from("user_security_codes")
+    .select("user_id")
+    .eq("user_id", session.session.user.id)
+    .maybeSingle();
+  return !!data;
 }
 
 export async function getCurrentSession() {
