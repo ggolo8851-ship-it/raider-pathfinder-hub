@@ -693,15 +693,39 @@ export async function searchColleges(
         if ((c.testPolicy || "unknown") !== filters.testPolicyFilter) return false;
       }
 
+      // NEW: institutional classification (HBCU / HSI / AANAPISI / TCU / Women's / PWI)
+      if (filters.msiFilter && filters.msiFilter !== "all") {
+        const list = (c.institutionalClassification || []).map(s => s.toLowerCase());
+        const f = filters.msiFilter.toLowerCase();
+        const wantWomen = f === "womens";
+        const matchHit = wantWomen
+          ? list.includes("women's college")
+          : list.some(s => s === f);
+        if (!matchHit) return false;
+      }
+
       return true;
     })
+    // Dedupe by id (preserve first occurrence)
+    .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
     .sort((a, b) => {
-      // When user is searching by name, prioritize closer name matches first.
+      // When user is searching by name, prioritize EXACT name matches first regardless of fit.
       if (hasSearchQuery) {
-        const q = filters.searchQuery!.trim().toLowerCase();
-        const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
-        const aRank = an === q ? 0 : an.startsWith(q) ? 1 : an.includes(q) ? 2 : 3;
-        const bRank = bn === q ? 0 : bn.startsWith(q) ? 1 : bn.includes(q) ? 2 : 3;
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+        const q = norm(filters.searchQuery!);
+        const an = norm(a.name), bn = norm(b.name);
+        // 0=exact, 1=starts with, 2=token starts with, 3=substring, 4=other
+        const rank = (n: string) => {
+          if (n === q) return 0;
+          if (n.startsWith(q + " ") || n === q) return 1;
+          if (n.startsWith(q)) return 1;
+          const tokens = n.split(" ");
+          if (tokens.some(t => t === q)) return 2;
+          if (tokens.some(t => t.startsWith(q))) return 2;
+          if (n.includes(q)) return 3;
+          return 4;
+        };
+        const aRank = rank(an), bRank = rank(bn);
         if (aRank !== bRank) return aRank - bRank;
       }
       return b.fitScore - a.fitScore;
