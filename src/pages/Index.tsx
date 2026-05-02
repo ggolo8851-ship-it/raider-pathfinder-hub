@@ -112,6 +112,7 @@ const Index = () => {
       {page === "transcripts" && <TranscriptsPage />}
       {page === "graduation" && <GraduationPage />}
       {page === "faculty" && <FacultyPage />}
+      {page.startsWith("custom:") && <CustomTabRouter slug={page.slice(7)} />}
     </div>
   );
 };
