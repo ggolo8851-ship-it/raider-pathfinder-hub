@@ -31,6 +31,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   const [selectedSports, setSelectedSports] = useState<string[]>(profile.sports || []);
   const [sportRoles, setSportRoles] = useState<SportRole[]>(profile.sportRoles || []);
   const [clubSearch, setClubSearch] = useState("");
+  const [apSearch, setApSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>(profile.extracurriculars || []);
   const [newExtra, setNewExtra] = useState("");
   const [achievements, setAchievements] = useState<string[]>(profile.achievements || []);
