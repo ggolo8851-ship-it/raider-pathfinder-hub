@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUsers, saveUsers } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface EmailSubscriptionBoxProps {
   email: string;
@@ -31,17 +33,28 @@ const EmailSubscriptionBox = ({ email, gradYear }: EmailSubscriptionBoxProps) =>
     setSelectedInterests(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleSubscribe = () => {
-    const users = getUsers();
-    if (users[email]) {
-      users[email].profile.emailSubscription = {
-        enabled: true,
-        interests: selectedInterests,
-      };
-      saveUsers(users);
+  const [sending, setSending] = useState(false);
+  const handleSubscribe = async () => {
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("subscribe-newsletter", {
+        body: { email: contactEmail },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const users = getUsers();
+      if (users[email]) {
+        users[email].profile.emailSubscription = { enabled: true, interests: selectedInterests };
+        saveUsers(users);
+      }
       setSubscribed(true);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      toast.success("Subscribed! Check your inbox for a welcome email.");
+      setTimeout(() => setShowSuccess(false), 4000);
+    } catch (err: any) {
+      toast.error(err.message ?? "Subscription failed");
+    } finally {
+      setSending(false);
     }
   };
 
