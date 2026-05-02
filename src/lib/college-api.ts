@@ -432,6 +432,7 @@ export async function searchColleges(
   const fields = [
     "id",
     "school.name", "school.city", "school.state", "school.school_url",
+    "school.locale",
     "location.lat", "location.lon", queryField,
     "latest.student.size",
     "latest.cost.tuition.in_state", "latest.cost.tuition.out_of_state",
@@ -441,6 +442,24 @@ export async function searchColleges(
     "latest.student.demographics.race_ethnicity.black",
     "latest.student.demographics.race_ethnicity.hispanic",
     "latest.student.demographics.race_ethnicity.asian",
+    // Top-program fields for "Best known for"
+    "latest.academics.program_percentage.computer",
+    "latest.academics.program_percentage.engineering",
+    "latest.academics.program_percentage.business_marketing",
+    "latest.academics.program_percentage.health",
+    "latest.academics.program_percentage.biological",
+    "latest.academics.program_percentage.psychology",
+    "latest.academics.program_percentage.social_science",
+    "latest.academics.program_percentage.education",
+    "latest.academics.program_percentage.visual_performing",
+    "latest.academics.program_percentage.english",
+    "latest.academics.program_percentage.mathematics",
+    "latest.academics.program_percentage.legal",
+    "latest.academics.program_percentage.communication",
+    "latest.academics.program_percentage.architecture",
+    "latest.academics.program_percentage.parks_recreation_fitness",
+    "latest.academics.program_percentage.history",
+    "latest.academics.program_percentage.philosophy_religious",
   ].join(",");
 
   const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
@@ -449,38 +468,46 @@ export async function searchColleges(
     let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=${perPage}&page=${page}&sort=latest.admissions.admission_rate.overall:asc`;
     if (filters.stateFilter === "maryland") url += "&school.state=MD";
     if (hasSearchQuery) {
-      url += `&school.name=${encodeURIComponent(filters.searchQuery!.trim())}`;
+      // school.search is fuzzy and matches mid-word; school.name only matches exact starts.
+      url += `&school.search=${encodeURIComponent(filters.searchQuery!.trim())}`;
     }
     return url;
   };
 
-  // When the user is searching by name, paginate up to 3 pages (300 results) so we don't miss schools.
-  // Otherwise just grab the first 100.
+  // Fetch US results from Scorecard (skip if user wants intl-only).
+  const wantUS = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "us";
+  const wantIntl = !filters.countryFilter || filters.countryFilter === "all" || filters.countryFilter === "intl";
+
   const pages = hasSearchQuery ? [0, 1, 2] : [0];
   const perPage = 100;
   const allResults: any[] = [];
-  for (const p of pages) {
-    const resp = await fetch(buildUrl(p, perPage));
-    if (!resp.ok) {
-      if (allResults.length === 0) throw new Error("API error");
-      break;
+  if (wantUS) {
+    for (const p of pages) {
+      try {
+        const resp = await fetch(buildUrl(p, perPage));
+        if (!resp.ok) {
+          if (allResults.length === 0 && !wantIntl) throw new Error("API error");
+          break;
+        }
+        const data = await resp.json();
+        if (!data.results || data.results.length === 0) break;
+        allResults.push(...data.results);
+        if (data.results.length < perPage) break;
+      } catch (e) {
+        console.warn("Scorecard fetch failed:", e);
+        break;
+      }
     }
-    const data = await resp.json();
-    if (!data.results || data.results.length === 0) break;
-    allResults.push(...data.results);
-    if (data.results.length < perPage) break;
   }
-  if (allResults.length === 0) return [];
 
   const gpaNum = parseFloat(gpa) || 3.0;
-  // Support all 3 pathways: SAT, ACT (converted to SAT-equivalent), or test-optional
   const ACT_TO_SAT: Record<number, number> = { 36: 1590, 35: 1540, 34: 1500, 33: 1460, 32: 1430, 31: 1400, 30: 1370, 29: 1340, 28: 1310, 27: 1280, 26: 1240, 25: 1210, 24: 1180, 23: 1140, 22: 1110, 21: 1080, 20: 1040, 19: 1010, 18: 970, 17: 930, 16: 890, 15: 850, 14: 800, 13: 760, 12: 710, 11: 670, 10: 630 };
   let userSat = parseInt(sat) || 0;
   const userAct = parseInt(act) || 0;
   if (!userSat && userAct && ACT_TO_SAT[userAct]) userSat = ACT_TO_SAT[userAct];
 
-  return allResults
-    .map((c: any) => {
+  const usResults: CollegeResult[] = allResults
+    .map((c: any): CollegeResult | null => {
       const lat = c['location.lat'];
       const lon = c['location.lon'];
       if (!lat || !lon) return null;
@@ -493,6 +520,7 @@ export async function searchColleges(
       const admRate = c['latest.admissions.admission_rate.overall'] || null;
       const satAvg = c['latest.admissions.sat_scores.average.overall'] || null;
       const programPct = c[queryField] || 0;
+      const name = c['school.name'];
 
       const demographics = {
         white: Math.round((c['latest.student.demographics.race_ethnicity.white'] || 0) * 100),
@@ -504,7 +532,7 @@ export async function searchColleges(
       demographics.other = Math.max(0, 100 - demographics.white - demographics.black - demographics.hispanic - demographics.asian);
 
       return {
-        name: c['school.name'],
+        name,
         city: c['school.city'],
         state: c['school.state'],
         url: c['school.school_url']?.includes('http') ? c['school.school_url'] : 'https://' + c['school.school_url'],
@@ -519,25 +547,70 @@ export async function searchColleges(
         admissionRate: admRate,
         satAvg,
         tier: getTier(satAvg, admRate, userSat, gpaNum, aps.length, testOptional),
-        id: String(c['id'] || c['school.name']),
+        id: String(c['id'] || name),
+        country: "USA",
+        isInternational: false,
+        setting: localeToSetting(c['school.locale'] ?? null),
+        bestKnownPrograms: topPrograms(c, 3),
+        athleticDivision: classifyAthletics(name),
+        classification: classifyTier(name, enrollment, admRate),
+        chancePct: estimateChancePct(admRate, satAvg, userSat, gpaNum, testOptional),
         demographics,
       };
     })
-    .filter((c: CollegeResult | null) => {
-      if (!c) return false;
-      // When the user is doing a name search, RELAX distance/state filters so they actually see the institution they searched for.
+    .filter((c): c is CollegeResult => c !== null);
+
+  // Merge in international colleges (no live API — comes from international_colleges table)
+  let intlResults: CollegeResult[] = [];
+  if (wantIntl) {
+    try {
+      const intl = await fetchIntlColleges();
+      intlResults = intl.map(row => {
+        const cr = intlToCollegeResult(row, originLat, originLon);
+        cr.chancePct = estimateChancePct(cr.admissionRate, cr.satAvg, userSat, gpaNum, testOptional);
+        // Boost fitScore for intl schools that match the user's major area
+        const matchesMajor = row.programs.some(p => p.toLowerCase().includes(major.toLowerCase()) || major.toLowerCase().includes(p.toLowerCase()));
+        cr.fitScore = matchesMajor ? 75 : 55;
+        // Tier classification by admit rate
+        if (cr.admissionRate !== null) {
+          if (cr.admissionRate < 0.15) cr.tier = "Far Reach";
+          else if (cr.admissionRate < 0.30) cr.tier = "Possible Reach";
+          else if (cr.admissionRate < 0.55) cr.tier = "Target";
+          else cr.tier = "Safety";
+        }
+        return cr;
+      });
+      // If user is searching by name, filter intl results by query too
+      if (hasSearchQuery) {
+        const q = filters.searchQuery!.trim().toLowerCase();
+        intlResults = intlResults.filter(c => c.name.toLowerCase().includes(q));
+      }
+    } catch (e) {
+      console.warn("Intl fetch failed:", e);
+    }
+  }
+
+  const merged = [...usResults, ...intlResults];
+
+  return merged
+    .filter((c) => {
+      // When searching by name, RELAX geo filters but keep classification/athletic/cost active
       const skipGeoFilters = hasSearchQuery;
-      if (!skipGeoFilters && filters.distance > 0 && c.miles > filters.distance) return false;
-      if (!skipGeoFilters && filters.minDistance > 0 && c.miles < filters.minDistance) return false;
+      const isIntl = c.isInternational;
+      if (!skipGeoFilters && !isIntl && filters.distance > 0 && c.miles > filters.distance) return false;
+      if (!skipGeoFilters && !isIntl && filters.minDistance > 0 && c.miles < filters.minDistance) return false;
       if (filters.sizeFilter !== "all") {
         const sizeKey = c.size.toLowerCase().replace(" ", "");
         if (sizeKey !== filters.sizeFilter) return false;
       }
       if (filters.maxCost > 0) {
-        const cost = filters.tuitionType === "in_state" ? c.costInState : c.costOutState;
+        // Use out-of-state cost as default reference; in-state for MD residents
+        const cost = c.costOutState ?? c.costInState;
         if (cost && cost > filters.maxCost) return false;
       }
-      if (!skipGeoFilters && filters.stateFilter === "out_of_state" && c.state === "MD") return false;
+      if (!skipGeoFilters && !isIntl && filters.stateFilter === "out_of_state" && c.state === "MD") return false;
+
+      // Fit-tier filter (Safety / Target / Reach / etc) — with safety fallback
       if (filters.tierFilter && filters.tierFilter !== "all") {
         if (filters.tierFilter === "safety_target" && (c.tier === "Far Reach" || c.tier === "Possible Reach")) return false;
         if (filters.tierFilter === "safety" && c.tier !== "Safety") return false;
@@ -547,12 +620,26 @@ export async function searchColleges(
         if (filters.tierFilter === "reach" && c.tier !== "Possible Reach" && c.tier !== "Far Reach") return false;
         if (filters.tierFilter === "hidden_ivies" && !HIDDEN_IVIES.has(c.name)) return false;
         if (filters.tierFilter === "service_academies" && !SERVICE_ACADEMIES.has(c.name)) return false;
-        // International filter: College Scorecard only contains US schools, so this surfaces a hint instead of filtering
-        if (filters.tierFilter === "international") return false;
       }
+
+      // NEW: classification (prestige tier)
+      if (filters.classificationFilter && filters.classificationFilter !== "all") {
+        if (c.classification !== filters.classificationFilter) return false;
+      }
+
+      // NEW: athletic division
+      if (filters.athleticFilter && filters.athleticFilter !== "all") {
+        const want = filters.athleticFilter.toUpperCase();
+        if ((c.athleticDivision || "").toUpperCase() !== want) return false;
+      }
+
+      // NEW: country / out-of-country
+      if (filters.countryFilter === "us" && c.isInternational) return false;
+      if (filters.countryFilter === "intl" && !c.isInternational) return false;
+
       return true;
     })
-    .sort((a: CollegeResult, b: CollegeResult) => b.fitScore - a.fitScore);
+    .sort((a, b) => b.fitScore - a.fitScore);
 }
 
 // AI re-rank wrapper: given the user's full profile and a list of CollegeResults,
