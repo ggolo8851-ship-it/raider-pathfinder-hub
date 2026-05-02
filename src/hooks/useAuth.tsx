@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { enforceRememberPolicyOnBoot } from "@/lib/remember-me";
 
 interface AuthCtx {
   session: Session | null;
@@ -49,6 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setLoading(false);
+      // After we've loaded the session into memory, enforce the user's
+      // Remember Me preference (evict from localStorage if they said no).
+      enforceRememberPolicyOnBoot();
     });
 
     return () => subscription.unsubscribe();
