@@ -5,3 +5,7 @@ project_id = "sdlvrmfbyaithvfxhbao"
     verify_jwt = false
   [functions.process-email-queue]
     verify_jwt = true
+  [functions.request-password-reset]
+    verify_jwt = false
+  [functions.verify-password-reset]
+    verify_jwt = false

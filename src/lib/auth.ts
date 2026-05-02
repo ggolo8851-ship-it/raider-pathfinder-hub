@@ -28,12 +28,22 @@ export async function signOut() {
 }
 
 export async function resetPassword(email: string) {
-  // Native Supabase password reset — routed through the auth-email-hook
-  // and delivered via Lovable Emails using our branded recovery template.
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/reset-password",
+  // Custom code-based reset via Resend
+  const { data, error } = await supabase.functions.invoke("request-password-reset", {
+    body: { email },
   });
-  return { error };
+  if (error) return { error };
+  if (data?.error) return { error: new Error(data.error) };
+  return { error: null };
+}
+
+export async function verifyPasswordReset(email: string, code: string, newPassword: string) {
+  const { data, error } = await supabase.functions.invoke("verify-password-reset", {
+    body: { email, code, newPassword },
+  });
+  if (error) return { error };
+  if (data?.error) return { error: new Error(data.error) };
+  return { error: null };
 }
 
 export async function getCurrentSession() {
