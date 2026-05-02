@@ -1,3 +1,6 @@
+import { localeToSetting, topPrograms, classifyAthletics, classifyTier } from "@/lib/college-tiers";
+import { fetchIntlColleges, intlToCollegeResult } from "@/lib/international-colleges";
+
 const API_KEY = 'T1nIiVJanrQqJgS1OmJ7UKh0NpxJdzX9bzCeFpXo';
 const ERHS_COORDS = { lat: 38.9925, lon: -76.8743 };
 
