@@ -434,8 +434,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="hsi">HSI (Hispanic-Serving)</option>
                     <option value="aanapisi">AANAPISI (AAPI-Serving)</option>
                     <option value="tcu">TCU (Tribal Colleges)</option>
-                    <option value="annh">ANNH (Alaska Native/Native Hawaiian)</option>
-                    <option value="pbi">PBI (Predominantly Black)</option>
                     <option value="pwi">PWI (Predominantly White)</option>
                   </select>
                 </div>
