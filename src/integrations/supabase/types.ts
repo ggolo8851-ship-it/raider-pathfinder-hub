@@ -14,16 +14,247 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_email: string | null
+          admin_user_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          target: string | null
+        }
+        Insert: {
+          action: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target?: string | null
+        }
+        Relationships: []
+      }
+      admin_whitelist: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      bookmarks: {
+        Row: {
+          college_id: string
+          college_name: string | null
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          college_id: string
+          college_name?: string | null
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          college_id?: string
+          college_name?: string | null
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clubs: {
+        Row: {
+          classification: string | null
+          id: string
+          location: string | null
+          meeting_day: string | null
+          name: string
+          purpose: string | null
+          raw: Json | null
+          schedule: string | null
+          sponsor: string | null
+          sponsor_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          classification?: string | null
+          id?: string
+          location?: string | null
+          meeting_day?: string | null
+          name: string
+          purpose?: string | null
+          raw?: Json | null
+          schedule?: string | null
+          sponsor?: string | null
+          sponsor_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          classification?: string | null
+          id?: string
+          location?: string | null
+          meeting_day?: string | null
+          name?: string
+          purpose?: string | null
+          raw?: Json | null
+          schedule?: string | null
+          sponsor?: string | null
+          sponsor_email?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_blacklist: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      email_subscriptions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          welcome_sent: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          welcome_sent?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          welcome_sent?: boolean
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          admin_nickname: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          grad_year: number | null
+          id: string
+          profile_data: Json
+          setup_complete: boolean
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          admin_nickname?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          grad_year?: number | null
+          id?: string
+          profile_data?: Json
+          setup_complete?: boolean
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          admin_nickname?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          grad_year?: number | null
+          id?: string
+          profile_data?: Json
+          setup_complete?: boolean
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_blacklisted: { Args: { _email: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +381,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
