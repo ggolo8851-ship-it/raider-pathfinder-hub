@@ -23,6 +23,7 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [clubSearch, setClubSearch] = useState("");
+  const [apSearch, setApSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>([]);
   const [newExtra, setNewExtra] = useState("");
   const [achievements, setAchievements] = useState<string[]>([]);
