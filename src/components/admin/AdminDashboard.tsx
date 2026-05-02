@@ -21,7 +21,7 @@ interface Props {
 
 type Section =
   | "dashboard" | "access" | "colleges" | "clubs" | "users"
-  | "filters" | "content" | "integrity" | "logs" | "faculty";
+  | "filters" | "content" | "integrity" | "logs" | "faculty" | "tabs";
 
 const NAV: [Section, string][] = [
   ["dashboard", "📊 Dashboard"],
