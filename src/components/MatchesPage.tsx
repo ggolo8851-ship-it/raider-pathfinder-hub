@@ -21,7 +21,9 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [athleticFilter, setAthleticFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [testPolicyFilter, setTestPolicyFilter] = useState("all");
+  const [msiFilter, setMsiFilter] = useState("all");
   const [collegeSearch, setCollegeSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [colleges, setColleges] = useState<CollegeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [careers, setCareers] = useState<CareerMatch[]>([]);
@@ -58,37 +60,47 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     return () => { cancelled = true; };
   }, [profile]);
 
+  // Debounce the search input — prevents flicker / API spam while typing
   useEffect(() => {
-    if (tab === "colleges") {
-      setLoading(true);
-      const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
-      const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, searchQuery: collegeSearch };
-      searchColleges(
-        profile.major, filters, email, profile.gpa, profile.aps,
-        profile.clubs || [], profile.sat || "", profile.act || "",
-        profile.extracurriculars || [], profile.sports || [],
-        profile.vibeAnswers || {},
-        profile.lat, profile.lon,
-        profile.testOptional,
-        profile.interests || []
-      )
-        .then(async (results) => {
-          setColleges(results);
-          if (results.length > 0) {
-            const ranked = await aiRankColleges(results, {
-              major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
-              aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
-              extracurriculars: profile.extracurriculars, achievements: profile.achievements,
-              interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
-              vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
-            });
-            setColleges(ranked);
-          }
-        })
-        .catch(() => setColleges([]))
-        .finally(() => setLoading(false));
-    }
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, collegeSearch, email]);
+    const t = setTimeout(() => setDebouncedSearch(collegeSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [collegeSearch]);
+
+  useEffect(() => {
+    if (tab !== "colleges") return;
+    setLoading(true);
+    let cancelled = false;
+    const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
+    const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
+    const isSearching = debouncedSearch.length > 1;
+    searchColleges(
+      profile.major, filters, email, profile.gpa, profile.aps,
+      profile.clubs || [], profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], profile.sports || [],
+      profile.vibeAnswers || {},
+      profile.lat, profile.lon,
+      profile.testOptional,
+      profile.interests || []
+    )
+      .then(async (results) => {
+        if (cancelled) return;
+        setColleges(results);
+        // Skip AI re-rank during active name search — it would override exact-match priority.
+        if (results.length > 0 && !isSearching) {
+          const ranked = await aiRankColleges(results, {
+            major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
+            aps: profile.aps, clubs: profile.clubs, sports: profile.sports,
+            extracurriculars: profile.extracurriculars, achievements: profile.achievements,
+            interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
+            vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
+          });
+          if (!cancelled) setColleges(ranked);
+        }
+      })
+      .catch(() => { if (!cancelled) setColleges([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
@@ -140,6 +152,10 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <span className="text-xs font-bold text-secondary">MATCH #{i + 1}</span>
             <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">{c.fitScore}% FIT</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${tierColors[c.tier]}`}>{c.tier}</span>
+            {c.womenOnly && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">Women's College</span>}
+            {c.institutionalClassification?.filter(t => t !== "PWI" && t !== "Women's College" && t !== "Men's College").map(tag => (
+              <span key={tag} className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">{tag}</span>
+            ))}
           </div>
           <h4 className="text-lg font-bold text-primary mt-1">{c.name}</h4>
           <p className="text-sm text-muted-foreground">
@@ -184,6 +200,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           {c.country && c.country !== "USA" && <p><b>🌍 Country:</b> {c.country}</p>}
           {c.bestKnownPrograms && c.bestKnownPrograms.length > 0 && (
             <p><b>⭐ Best Known For:</b> {c.bestKnownPrograms.slice(0, 3).join(", ")}</p>
+          )}
+          {c.institutionalClassification && c.institutionalClassification.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <b>🏛️ Institutional Classification:</b>
+              {c.institutionalClassification.map(tag => (
+                <span key={tag} className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {tag}
+                </span>
+              ))}
+            </div>
           )}
           {c.avgSalary10yr != null && (
             <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
@@ -386,6 +412,24 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="required">SAT/ACT Required</option>
                     <option value="optional">Test-Optional</option>
                     <option value="blind">Test-Blind</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground">Institutional Classification</label>
+                  <select value={msiFilter} onChange={e => setMsiFilter(e.target.value)}
+                    className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
+                    <option value="all">All Institutions</option>
+                    <option value="womens">Women's Colleges</option>
+                    <option value="hbcu">HBCU (Historically Black)</option>
+                    <option value="hsi">HSI (Hispanic-Serving)</option>
+                    <option value="aanapisi">AANAPISI (AAPI-Serving)</option>
+                    <option value="tcu">TCU (Tribal Colleges)</option>
+                    <option value="annh">ANNH (Alaska Native/Native Hawaiian)</option>
+                    <option value="pbi">PBI (Predominantly Black)</option>
+                    <option value="pwi">PWI (Predominantly White)</option>
                   </select>
                 </div>
               </div>

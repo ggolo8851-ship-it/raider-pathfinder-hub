@@ -103,6 +103,9 @@ export interface CollegeResult {
   isInternational?: boolean;        // true if from international_colleges table
   chancePct?: number | null;        // 0-100 estimated admit chance for this user
   classification?: "tier1" | "tier2" | "tier3" | "tier4";
+  womenOnly?: boolean;              // Women's college flag
+  menOnly?: boolean;
+  institutionalClassification?: string[]; // ["HBCU","HSI","AANAPISI","TCU","ANNH","NANTI","PBI","Women's College","PWI"]
   demographics?: {
     white: number;
     black: number;
@@ -364,6 +367,7 @@ export interface SearchFilters {
   athleticFilter?: string;        // d1/d2/d3/naia/none
   countryFilter?: string;         // us/intl/all
   testPolicyFilter?: string;      // required/optional/blind/all
+  msiFilter?: string;             // hbcu/hsi/aanapisi/tcu/womens/pwi/all
   searchQuery?: string;
 }
 
@@ -451,6 +455,15 @@ export async function searchColleges(
     "latest.student.demographics.race_ethnicity.black",
     "latest.student.demographics.race_ethnicity.hispanic",
     "latest.student.demographics.race_ethnicity.asian",
+    // Institutional classification flags
+    "school.women_only", "school.men_only",
+    "school.minority_serving.historically_black",
+    "school.minority_serving.hispanic",
+    "school.minority_serving.annh",
+    "school.minority_serving.aanapii",
+    "school.minority_serving.tribal",
+    "school.minority_serving.nant",
+    "school.minority_serving.predominantly_black",
     // Top-program fields for "Best known for"
     "latest.academics.program_percentage.computer",
     "latest.academics.program_percentage.engineering",
@@ -474,10 +487,14 @@ export async function searchColleges(
   const hasSearchQuery = !!(filters.searchQuery && filters.searchQuery.trim().length > 1);
 
   const buildUrl = (page: number, perPage: number) => {
-    let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&school.degrees_awarded.predominant=3&fields=${fields}&per_page=${perPage}&page=${page}&sort=latest.admissions.admission_rate.overall:asc`;
-    if (filters.stateFilter === "maryland") url += "&school.state=MD";
+    // When searching by name, drop the bachelor's-only restriction so specialty/grad-heavy
+    // schools surface; when browsing, keep predominant=3 to focus on undergrad institutions.
+    const predominant = hasSearchQuery ? "" : "&school.degrees_awarded.predominant=3";
+    let url = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1${predominant}&fields=${fields}&per_page=${perPage}&page=${page}`;
+    // Sort by selectivity only when not searching; when searching, let API relevance + our client-side rank decide.
+    if (!hasSearchQuery) url += `&sort=latest.admissions.admission_rate.overall:asc`;
+    if (filters.stateFilter === "maryland" && !hasSearchQuery) url += "&school.state=MD";
     if (hasSearchQuery) {
-      // school.search is fuzzy and matches mid-word; school.name only matches exact starts.
       url += `&school.search=${encodeURIComponent(filters.searchQuery!.trim())}`;
     }
     return url;
@@ -545,6 +562,21 @@ export async function searchColleges(
       };
       demographics.other = Math.max(0, 100 - demographics.white - demographics.black - demographics.hispanic - demographics.asian);
 
+      // Institutional classification (MSI / Women's / PWI)
+      const womenOnly = c['school.women_only'] === 1 || c['school.women_only'] === true;
+      const menOnly = c['school.men_only'] === 1 || c['school.men_only'] === true;
+      const msi: string[] = [];
+      if (c['school.minority_serving.historically_black'] === 1) msi.push("HBCU");
+      if (c['school.minority_serving.hispanic'] === 1) msi.push("HSI");
+      if (c['school.minority_serving.aanapii'] === 1) msi.push("AANAPISI");
+      if (c['school.minority_serving.tribal'] === 1) msi.push("TCU");
+      if (c['school.minority_serving.annh'] === 1) msi.push("ANNH");
+      if (c['school.minority_serving.nant'] === 1) msi.push("NANTI");
+      if (c['school.minority_serving.predominantly_black'] === 1) msi.push("PBI");
+      if (womenOnly) msi.push("Women's College");
+      if (menOnly) msi.push("Men's College");
+      if (msi.length === 0) msi.push("PWI");
+
       return {
         name,
         city: c['school.city'],
@@ -571,6 +603,9 @@ export async function searchColleges(
         chancePct: estimateChancePct(admRate, satAvg, userSat, gpaNum, testOptional),
         avgSalary10yr: salary10,
         testPolicy,
+        womenOnly,
+        menOnly,
+        institutionalClassification: msi,
         demographics,
       };
     })
@@ -658,15 +693,39 @@ export async function searchColleges(
         if ((c.testPolicy || "unknown") !== filters.testPolicyFilter) return false;
       }
 
+      // NEW: institutional classification (HBCU / HSI / AANAPISI / TCU / Women's / PWI)
+      if (filters.msiFilter && filters.msiFilter !== "all") {
+        const list = (c.institutionalClassification || []).map(s => s.toLowerCase());
+        const f = filters.msiFilter.toLowerCase();
+        const wantWomen = f === "womens";
+        const matchHit = wantWomen
+          ? list.includes("women's college")
+          : list.some(s => s === f);
+        if (!matchHit) return false;
+      }
+
       return true;
     })
+    // Dedupe by id (preserve first occurrence)
+    .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
     .sort((a, b) => {
-      // When user is searching by name, prioritize closer name matches first.
+      // When user is searching by name, prioritize EXACT name matches first regardless of fit.
       if (hasSearchQuery) {
-        const q = filters.searchQuery!.trim().toLowerCase();
-        const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
-        const aRank = an === q ? 0 : an.startsWith(q) ? 1 : an.includes(q) ? 2 : 3;
-        const bRank = bn === q ? 0 : bn.startsWith(q) ? 1 : bn.includes(q) ? 2 : 3;
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+        const q = norm(filters.searchQuery!);
+        const an = norm(a.name), bn = norm(b.name);
+        // 0=exact, 1=starts with, 2=token starts with, 3=substring, 4=other
+        const rank = (n: string) => {
+          if (n === q) return 0;
+          if (n.startsWith(q + " ") || n === q) return 1;
+          if (n.startsWith(q)) return 1;
+          const tokens = n.split(" ");
+          if (tokens.some(t => t === q)) return 2;
+          if (tokens.some(t => t.startsWith(q))) return 2;
+          if (n.includes(q)) return 3;
+          return 4;
+        };
+        const aRank = rank(an), bRank = rank(bn);
         if (aRank !== bRank) return aRank - bRank;
       }
       return b.fitScore - a.fitScore;
