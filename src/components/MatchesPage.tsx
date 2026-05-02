@@ -174,9 +174,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
           <div className="flex gap-2 mt-2 flex-wrap">
             <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Official Website ↗</a>
-            
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " common data set filetype:pdf")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Common Data Set 📊</a>
+            <a href={`https://www.usnews.com/best-colleges/search?school-name=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">US News Ranking 🏆</a>
+            <a href={`https://www.niche.com/colleges/search/best-colleges/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Niche Reviews ↗</a>
           </div>
         </div>
       )}
