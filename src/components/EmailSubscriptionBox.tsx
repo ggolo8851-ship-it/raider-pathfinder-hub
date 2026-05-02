@@ -115,8 +115,8 @@ const EmailSubscriptionBox = ({ email, gradYear }: EmailSubscriptionBoxProps) =>
               </label>
             ))}
           </div>
-          <Button onClick={handleSubscribe} disabled={selectedInterests.length === 0} className="w-full">
-            Subscribe to Updates
+          <Button onClick={handleSubscribe} disabled={selectedInterests.length === 0 || sending} className="w-full">
+            {sending ? "Subscribing..." : "Subscribe to Updates"}
           </Button>
           <p className="text-xs text-muted-foreground mt-2 text-center">No spam — only useful, personalized updates for Class of {gradYear}.</p>
         </div>
