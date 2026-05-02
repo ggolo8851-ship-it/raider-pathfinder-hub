@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
 import RefreshCountdown from "@/components/RefreshCountdown";
 
-          <div className="mt-4"><RefreshCountdown /></div>
-
 
 interface HomePageProps {
   username: string;
