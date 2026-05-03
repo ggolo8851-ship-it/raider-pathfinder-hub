@@ -19,6 +19,7 @@ const CLUB_ROLES: ClubRole["role"][] = ["Member", "Management", "Founder"];
 const SPORT_ROLES: SportRole["role"][] = ["Player", "Captain", "Manager"];
 
 const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProps) => {
+  const [displayName, setDisplayName] = useState(userName);
   const [major, setMajor] = useState(profile.major);
   const [gpa, setGpa] = useState(profile.gpa);
   const [sat, setSat] = useState(profile.sat || "");
@@ -101,6 +102,8 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
     }
 
     const users = getUsers();
+    const cleanName = displayName.trim() || users[email].name;
+    users[email].name = cleanName;
     users[email].profile = {
       major, gpa, sat, act, gradYear,
       aps: selectedAps, apScores,
@@ -115,6 +118,14 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
       emailSubscription: profile.emailSubscription || { enabled: false, interests: [] },
     };
     saveUsers(users);
+    // Also persist display name to Supabase profile so it shows everywhere
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: sess } = await supabase.auth.getSession();
+      if (sess.session) {
+        await supabase.from("profiles").update({ display_name: cleanName }).eq("user_id", sess.session.user.id);
+      }
+    } catch {}
     setSaving(false);
     onUpdate();
   };
@@ -147,8 +158,16 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
   return (
     <div className="max-w-2xl mx-auto py-10 px-5">
       <div className="bg-card rounded-2xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-primary mb-1">Edit Profile</h2>
-        <p className="text-muted-foreground mb-6">{userName}</p>
+        <h2 className="text-2xl font-bold text-primary mb-3">Edit Profile</h2>
+
+        <label className="text-sm font-semibold">Your Name</label>
+        <Input
+          value={displayName}
+          onChange={e => setDisplayName(e.target.value)}
+          placeholder="Your name"
+          className="mb-4"
+        />
+
 
         <label className="flex items-center gap-2 mb-4 cursor-pointer">
           <input type="checkbox" checked={isST} onChange={() => setIsST(!isST)} className="accent-primary w-4 h-4" />
