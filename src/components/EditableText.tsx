@@ -21,7 +21,7 @@ export default function EditableText({ textKey, defaultValue, as = "span", class
   useEffect(() => {
     ensureLoaded().then(() => force(n => n + 1));
     const unsub = subscribe(() => force(n => n + 1));
-    return unsub;
+    return () => { unsub(); };
   }, []);
 
   const value = getOverride(textKey) ?? defaultValue;
