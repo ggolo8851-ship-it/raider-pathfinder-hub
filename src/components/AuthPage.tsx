@@ -84,8 +84,11 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     const { error } = await signUpWithEmail(cleanEmail, password, fullName);
     if (error) {
       setLoading(false);
-      if (error.message.toLowerCase().includes("blocked")) {
+      const m = error.message.toLowerCase();
+      if (m.includes("blocked")) {
         setError("This email has been blocked from creating an account.");
+      } else if (m.includes("already registered") || m.includes("already exists") || m.includes("user already")) {
+        setError("This email is already registered. If you signed up with Google before, use 'Continue with Google' instead.");
       } else {
         setError(error.message);
       }
