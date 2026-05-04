@@ -575,7 +575,6 @@ export async function searchColleges(
       const satAvg = c['latest.admissions.sat_scores.average.overall'] || null;
       const programPct = c[queryField] || 0;
       const name = c['school.name'];
-      const salary10 = c['latest.earnings.10_yrs_after_entry.median'] ?? c['latest.earnings.6_yrs_after_entry.median'] ?? null;
       // Test requirements code: 1=required, 3=considered but not required (optional), 5=not used (blind)
       const trCode = c['latest.admissions.test_requirements'];
       const testPolicy: "required" | "optional" | "blind" | "unknown" =
@@ -626,8 +625,16 @@ export async function searchColleges(
         bestKnownPrograms: topPrograms(c, 3),
         athleticDivision: classifyAthletics(name),
         classification: classifyTier(name, enrollment, admRate),
-        chancePct: estimateChancePct(admRate, satAvg, userSat, gpaNum, testOptional),
-        avgSalary10yr: salary10,
+        chancePct: estimateChanceAdvanced({
+          admRate, schoolSat: satAvg, userSat, userGpa: gpaNum, testOptional,
+          apCount: aps.length,
+          ecCount: (clubs?.length || 0) + (extracurriculars?.length || 0) + (sports?.length || 0),
+          hasLeadership: /\b(president|captain|founder|leader|director|chair)\b/i.test(
+            (clubs.join(" ") + " " + extracurriculars.join(" ")).toLowerCase()
+          ),
+          achievementsCount: 0,
+          serviceHours: 0,
+        }),
         testPolicy,
         womenOnly,
         menOnly,
