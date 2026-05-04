@@ -357,26 +357,56 @@ export interface SearchFilters {
   searchQuery?: string;
 }
 
-// Estimate the user's chance of admission (0-100) given school stats and user profile.
-function estimateChancePct(admRate: number | null, schoolSat: number | null, userSat: number, userGpa: number, testOptional: boolean): number | null {
-  if (admRate === null) return null;
-  let chance = admRate * 100;
+// Logistic admission-chance model.
+// Inputs: school selectivity, user GPA, test score (skipped if test-optional),
+// AP rigor, EC depth, leadership signal, achievements, service hours.
+// Output: 1..99 percent.
+export function estimateChanceAdvanced(opts: {
+  admRate: number | null;
+  schoolSat: number | null;
+  userSat: number;
+  userGpa: number;
+  testOptional: boolean;
+  apCount?: number;
+  ecCount?: number;
+  hasLeadership?: boolean;
+  achievementsCount?: number;
+  serviceHours?: number;
+}): number | null {
+  const {
+    admRate, schoolSat, userSat, userGpa, testOptional,
+    apCount = 0, ecCount = 0, hasLeadership = false,
+    achievementsCount = 0, serviceHours = 0,
+  } = opts;
+  if (admRate === null || admRate === undefined) return null;
+
+  // Baseline log-odds from admit rate (clamp to avoid -Infinity)
+  const p0 = Math.max(0.01, Math.min(0.99, admRate));
+  const baseLogit = Math.log(p0 / (1 - p0));
+
+  // Coefficients tuned so a 3.9 GPA / 1500 SAT / 6 APs / strong ECs at a 14% admit
+  // school lands around 30-40% chance — realistic, not the old <5%.
+  const gpaTerm = 1.6 * (userGpa - 3.5);
+
+  let satTerm = 0;
   if (!testOptional && schoolSat && userSat > 0) {
-    const diff = userSat - schoolSat;
-    if (diff >= 100) chance *= 1.5;
-    else if (diff >= 50) chance *= 1.25;
-    else if (diff >= 0) chance *= 1.05;
-    else if (diff >= -50) chance *= 0.85;
-    else if (diff >= -100) chance *= 0.6;
-    else chance *= 0.35;
+    satTerm = 1.0 * ((userSat - schoolSat) / 100);
   }
-  if (userGpa >= 3.9) chance *= 1.25;
-  else if (userGpa >= 3.7) chance *= 1.1;
-  else if (userGpa >= 3.5) chance *= 1.0;
-  else if (userGpa >= 3.2) chance *= 0.75;
-  else if (userGpa >= 3.0) chance *= 0.55;
-  else chance *= 0.3;
-  return Math.max(1, Math.min(99, Math.round(chance)));
+
+  const apTerm = 0.12 * Math.min(apCount, 10);
+  const ecTerm = 0.08 * Math.min(ecCount, 12);
+  const leadTerm = hasLeadership ? 0.35 : 0;
+  const achTerm = 0.12 * Math.min(achievementsCount, 8);
+  const svcTerm = serviceHours >= 100 ? 0.25 : serviceHours >= 50 ? 0.15 : serviceHours >= 24 ? 0.08 : 0;
+
+  const z = baseLogit + gpaTerm + satTerm + apTerm + ecTerm + leadTerm + achTerm + svcTerm;
+  const p = 1 / (1 + Math.exp(-z));
+  return Math.max(1, Math.min(99, Math.round(p * 100)));
+}
+
+// Backwards-compat thin wrapper used by older call sites.
+function estimateChancePct(admRate: number | null, schoolSat: number | null, userSat: number, userGpa: number, testOptional: boolean): number | null {
+  return estimateChanceAdvanced({ admRate, schoolSat, userSat, userGpa, testOptional });
 }
 
 // Curated lists of "Hidden Ivies" (highly regarded liberal arts/research universities outside the Ivy League)
