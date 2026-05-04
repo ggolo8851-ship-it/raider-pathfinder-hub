@@ -380,6 +380,30 @@ export type Database = {
         }
         Relationships: []
       }
+      page_visits: {
+        Row: {
+          email: string | null
+          id: string
+          path: string
+          user_id: string | null
+          visited_at: string
+        }
+        Insert: {
+          email?: string | null
+          id?: string
+          path: string
+          user_id?: string | null
+          visited_at?: string
+        }
+        Update: {
+          email?: string | null
+          id?: string
+          path?: string
+          user_id?: string | null
+          visited_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           admin_nickname: string | null
