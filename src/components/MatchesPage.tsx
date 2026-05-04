@@ -217,9 +217,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
               ))}
             </div>
           )}
-          {c.avgSalary10yr != null && (
-            <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
-          )}
           {c.testPolicy && c.testPolicy !== "unknown" && (
             <p><b>📝 Test Policy:</b> {c.testPolicy === "required" ? "SAT/ACT Required" : c.testPolicy === "optional" ? "Test-Optional" : "Test-Blind"}</p>
           )}
@@ -264,7 +261,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 <a href={`https://www.google.com/search?q=${encodeURIComponent(cdsQ)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set (PDF) ↗</a>
               );
             })()}
-            <a href={`https://collegescorecard.ed.gov/school?id=${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">💰 Salary Data ↗</a>
+            
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>
