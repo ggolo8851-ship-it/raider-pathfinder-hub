@@ -17,6 +17,7 @@ import FacultyPage from "@/components/FacultyPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import CustomTabPage from "@/components/CustomTabPage";
 import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
+import { trackVisit } from "@/lib/visit-tracker";
 
 const CustomTabRouter = ({ slug }: { slug: string }) => {
   const [tab, setTab] = useState<CustomTab | null>(null);
@@ -59,6 +60,15 @@ const Index = () => {
     setPage("home");
     setAdminMode(false);
   }, []);
+
+  // Track visits: on every page change and whenever the tab becomes visible again
+  useEffect(() => {
+    if (!session) return;
+    trackVisit(page);
+    const onVis = () => { if (document.visibilityState === "visible") trackVisit(page); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [page, session]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
