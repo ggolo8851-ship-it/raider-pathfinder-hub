@@ -651,17 +651,22 @@ export async function searchColleges(
       const intl = await fetchIntlColleges();
       intlResults = intl.map(row => {
         const cr = intlToCollegeResult(row, originLat, originLon);
-        cr.chancePct = estimateChancePct(cr.admissionRate, cr.satAvg, userSat, gpaNum, testOptional);
+        const ecCountIntl = (clubs?.length || 0) + (extracurriculars?.length || 0) + (sports?.length || 0);
+        const hasLeadIntl = /\b(president|captain|founder|leader|director|chair)\b/i.test(
+          (clubs.join(" ") + " " + extracurriculars.join(" ")).toLowerCase()
+        );
+        cr.chancePct = estimateChanceAdvanced({
+          admRate: cr.admissionRate, schoolSat: cr.satAvg, userSat,
+          userGpa: gpaNum, testOptional,
+          apCount: aps.length, ecCount: ecCountIntl,
+          hasLeadership: hasLeadIntl,
+        });
         // Boost fitScore for intl schools that match the user's major area
         const matchesMajor = row.programs.some(p => p.toLowerCase().includes(major.toLowerCase()) || major.toLowerCase().includes(p.toLowerCase()));
         cr.fitScore = matchesMajor ? 75 : 55;
-        // Tier classification by admit rate
-        if (cr.admissionRate !== null) {
-          if (cr.admissionRate < 0.15) cr.tier = "Far Reach";
-          else if (cr.admissionRate < 0.30) cr.tier = "Possible Reach";
-          else if (cr.admissionRate < 0.55) cr.tier = "Target";
-          else cr.tier = "Safety";
-        }
+        // Use the same user-aware tier function as US schools so a strong applicant
+        // can land Possible Reach / Target at intl schools (e.g., Imperial College London).
+        cr.tier = getTier(cr.satAvg, cr.admissionRate, userSat, gpaNum, aps.length, testOptional);
         return cr;
       });
       // If user is searching by name, filter intl results by query too
