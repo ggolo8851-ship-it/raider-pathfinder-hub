@@ -23,6 +23,13 @@ export async function signInWithGoogle() {
   });
 }
 
+/** Returns the number of distinct identity providers linked to the current user. */
+export async function getLinkedIdentityCount(): Promise<number> {
+  const { data } = await supabase.auth.getUser();
+  const ids = (data.user as any)?.identities;
+  return Array.isArray(ids) ? ids.length : 0;
+}
+
 export async function signOut() {
   await supabase.auth.signOut();
 }
