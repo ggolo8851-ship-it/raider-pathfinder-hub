@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
+import EditableText from "@/components/EditableText";
 
 interface AppNavProps {
   currentPage: string;
@@ -14,16 +15,16 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   useEffect(() => { fetchPublishedTabs().then(setCustomTabs); }, []);
 
-  const links = [
-    { id: "home", label: "Home" },
-    { id: "portfolio", label: "Portfolio" },
-    { id: "matches", label: "Matches" },
-    { id: "clubs", label: "Clubs" },
-    { id: "sat", label: "SAT/ACT" },
-    { id: "essays", label: "Essays" },
-    { id: "transcripts", label: "Counseling" },
-    { id: "graduation", label: "Graduation" },
-    { id: "faculty", label: "Faculty" },
+  const links: { id: string; label: string; key?: string }[] = [
+    { id: "home", label: "Home", key: "nav.home" },
+    { id: "portfolio", label: "Portfolio", key: "nav.portfolio" },
+    { id: "matches", label: "Matches", key: "nav.matches" },
+    { id: "clubs", label: "Clubs", key: "nav.clubs" },
+    { id: "sat", label: "SAT/ACT", key: "nav.sat" },
+    { id: "essays", label: "Essays", key: "nav.essays" },
+    { id: "transcripts", label: "Counseling", key: "nav.counseling" },
+    { id: "graduation", label: "Graduation", key: "nav.graduation" },
+    { id: "faculty", label: "Faculty", key: "nav.faculty" },
     ...customTabs.map(t => ({ id: `custom:${t.slug}`, label: `${t.icon || "📄"} ${t.title}` })),
   ];
 
@@ -32,7 +33,9 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
       <div className="max-w-6xl mx-auto flex justify-between items-center px-3 sm:px-5 py-3">
         <div className="relative">
           <button onClick={() => setShowMenu(!showMenu)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span className="text-primary-foreground text-lg sm:text-xl font-bold">RaidersMatch</span>
+            <span className="text-primary-foreground text-lg sm:text-xl font-bold">
+              <EditableText textKey="nav.brand" defaultValue="RaidersMatch" />
+            </span>
             <span className="text-primary-foreground/60 text-xs">▼</span>
           </button>
           {showMenu && (
@@ -60,12 +63,14 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
                   ? "bg-secondary text-secondary-foreground border-secondary font-semibold"
                   : "border-secondary text-primary-foreground hover:bg-secondary/20"
               }`}>
-              {l.label}
+              {l.key
+                ? <EditableText textKey={l.key} defaultValue={l.label} />
+                : l.label}
             </button>
           ))}
           <button onClick={onLogout}
             className="px-2.5 py-1 rounded-full text-[11px] sm:text-xs border border-destructive text-destructive hover:bg-destructive/20">
-            Sign Out
+            <EditableText textKey="nav.signout" defaultValue="Sign Out" />
           </button>
         </div>
       </div>

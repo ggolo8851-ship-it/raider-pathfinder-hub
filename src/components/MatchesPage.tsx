@@ -168,7 +168,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             {c.costInState && <>In-state: ${c.costInState.toLocaleString()}/yr</>}
           </p>
           {c.satAvg && <p className="text-xs text-muted-foreground">Avg SAT: {c.satAvg} {c.admissionRate && <>• Admit Rate: {(c.admissionRate * 100).toFixed(0)}%</>}</p>}
-          {c.avgSalary10yr != null && <p className="text-xs text-muted-foreground">💵 Median grad salary: ${c.avgSalary10yr.toLocaleString()}/yr</p>}
         </div>
         <div className="flex flex-col gap-2 items-end shrink-0">
           <button onClick={() => toggleBookmark(c.id)} className="text-2xl" title="Bookmark">
@@ -198,7 +197,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             <>
               <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-r p-2 text-xs text-foreground">
-                ⚠️ This estimate uses only your GPA, test scores, and the school's admit rate. It does <b>not</b> account for your essays, recommendation letters, interviews, demonstrated interest, or unique background — your real chances may be meaningfully better than the number shown.
+                ⚠️ Estimated chance is a model — it factors GPA, test scores, AP rigor, ECs, leadership, achievements, and service hours, but cannot see essays, recommendations, demonstrated interest, legacy, or institutional priorities. Treat it as <b>directional, not predictive</b>.
               </div>
             </>
           )}
@@ -217,9 +216,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </span>
               ))}
             </div>
-          )}
-          {c.avgSalary10yr != null && (
-            <p><b>💵 Avg Salary 10yr After Entry:</b> ${c.avgSalary10yr.toLocaleString()}/yr</p>
           )}
           {c.testPolicy && c.testPolicy !== "unknown" && (
             <p><b>📝 Test Policy:</b> {c.testPolicy === "required" ? "SAT/ACT Required" : c.testPolicy === "optional" ? "Test-Optional" : "Test-Blind"}</p>
@@ -265,7 +261,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 <a href={`https://www.google.com/search?q=${encodeURIComponent(cdsQ)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📊 Latest Common Data Set (PDF) ↗</a>
               );
             })()}
-            <a href={`https://collegescorecard.ed.gov/school?id=${encodeURIComponent(c.id)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">💰 Salary Data ↗</a>
+            
             <a href={`https://nces.ed.gov/collegenavigator/?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">College Navigator ↗</a>
             <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + profile.major + " major")}`} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Major Info ↗</a>
           </div>

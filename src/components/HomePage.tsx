@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ROADMAP_ITEMS } from "@/lib/store";
 import RefreshCountdown from "@/components/RefreshCountdown";
+import EditableText from "@/components/EditableText";
 
 
 interface HomePageProps {
@@ -47,12 +48,15 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
     <div>
       <div className="home-bg text-primary-foreground py-16 px-5 relative overflow-hidden">
         <div className="max-w-4xl mx-auto relative z-10">
-          <h2 className="text-4xl font-bold mb-2">Welcome, {username}!</h2>
+          <h2 className="text-4xl font-bold mb-2">
+            <EditableText textKey="home.welcome_prefix" defaultValue="Welcome, " />{username}!
+          </h2>
           <div className="bg-card/10 backdrop-blur-sm border-l-4 border-secondary rounded-r-xl p-6 mt-6">
-            <h3 className="text-xl font-semibold text-secondary mb-2">ERHS Students for Success</h3>
+            <h3 className="text-xl font-semibold text-secondary mb-2">
+              <EditableText textKey="home.org_title" defaultValue="ERHS Students for Success" />
+            </h3>
             <p className="text-primary-foreground/90 leading-relaxed">
-              "ERHS Students for Success is a student-run group that helps other students succeed in school and plan for their future.
-              Our goal is simple: Make sure every student has access to what they need to succeed."
+              <EditableText textKey="home.org_mission" defaultValue={'"ERHS Students for Success is a student-run group that helps other students succeed in school and plan for their future. Our goal is simple: Make sure every student has access to what they need to succeed."'} />
             </p>
           </div>
 
@@ -130,7 +134,9 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
       </div>
 
       <div className="max-w-4xl mx-auto py-10 px-5">
-        <h3 className="text-2xl font-bold text-primary mb-6">🗺️ Raider Roadmap — Class of {gradYear}</h3>
+        <h3 className="text-2xl font-bold text-primary mb-6">
+          <EditableText textKey="home.roadmap_title" defaultValue="🗺️ Raider Roadmap" /> — Class of {gradYear}
+        </h3>
         <div className="space-y-3">
           {upcomingRoadmap.map((item, i) => (
             <div key={i} className={`bg-card rounded-xl shadow-sm p-4 border-l-4 flex justify-between items-center ${
@@ -154,7 +160,9 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
           ))}
         </div>
 
-        <h3 className="text-2xl font-bold text-primary mt-10 mb-4">📊 Your Profile Snapshot</h3>
+        <h3 className="text-2xl font-bold text-primary mt-10 mb-4">
+          <EditableText textKey="home.snapshot_title" defaultValue="📊 Your Profile Snapshot" />
+        </h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
             <p className="text-3xl font-bold text-primary">{profile.aps.length}</p>

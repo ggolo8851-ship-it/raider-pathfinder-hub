@@ -1,119 +1,130 @@
-## Scope
+## Goal
 
-This is a large request. I'll break it into 5 focused workstreams. Each is independently shippable.
-
----
-
-## 1. College Matches — quick fixes
-
-**Institutional Classification filter**
-- Remove `PBI` and `ANNH` from the classification options and badges.
-- Keep: HBCU, HSI, AANAPISI, TCU, PWI.
-- Bug fix: the filter currently drops colleges that have the flag = 0 *and* colleges where the field is `null`. Switch to "show only schools where flag = 1" only when a specific classification is selected; "All" shows everything. Also pull `school.minority_serving.*` fields from Scorecard for every result (some flags are missing because we only request them on detail load).
-
-**Virtual Tour link**
-- Replace the YouTube search link with a Niche virtual-tour deep link:
-  `https://www.niche.com/colleges/{slug}/visit/` where `{slug}` is the lowercased, hyphenated college name (e.g. `university-of-maryland-college-park`). Niche redirects unknown slugs to a search, so it works for every college. Label: "🎥 Virtual Tour (Niche) ↗".
-
-**Chance-of-admission disclaimer**
-- Under the `chancePct` badge in the More Info panel, add a yellow callout:
-  > ⚠️ This estimate is based only on GPA, test scores, and admit rate. It does **not** account for your essays, recommendation letters, interviews, or demonstrated interest — your real chances may be meaningfully higher.
+Ship a multi-part platform upgrade: editable copy across Auth/Home/Nav, fix international-college matching (Imperial College London tier), strip salary data, add a stronger admission-chance algorithm with a clearer disclaimer, track site visits, detect in-app browsers, surface Google↔email account-linking, and tighten matching math.
 
 ---
 
-## 2. Matching engine — use full profile, not just the quiz
+## 1. Wrap Auth, Home, and Nav text in `EditableText`
 
-Today `calculateFitScore` in `src/lib/college-api.ts` mostly weights GPA/SAT/major/distance and the vibe quiz. I'll extend it so the **portfolio** drives the score too:
+Wrap the top headings, button labels, hero copy, and nav link labels. Each gets a stable `textKey` like `auth.title`, `home.welcome_prefix`, `nav.matches`. Default value = the current literal so non-admins see no change. Admins double-click to edit; values persist in `text_overrides`.
 
-- **APs** → +rigor signal, scaled against the school's selectivity (more APs help more for reach schools).
-- **Clubs / extracurriculars / achievements** → +EC depth signal (count + leadership keywords like "president", "captain", "founder").
-- **Service hours** → +civic-fit signal, with a bigger boost for schools that publish high community-engagement enrollment.
-- **Sports** → matched against `athleticDivision` (a varsity athlete gets a boost on D1/D2/D3 schools that field that sport — keyword match against the sport name in the school's program list as a proxy).
-- **GPA + SAT chance** → folded into the score as a multiplier, not just used for tier bucketing, so a far-reach school is demoted but not deleted.
+Files:
 
-`chancePct` formula stays as-is but is now ONE input to the fit score rather than a side display.
+- `src/components/AuthPage.tsx` — wrap "RaidersMatch", section headings, sign-in/sign-up button labels, "Continue with Google", help text.
+- `src/components/HomePage.tsx` — wrap "Welcome, …!", "ERHS Students for Success", the mission paragraph, the SSL/aid headings, link button labels (FAFSA, MHEC, etc.), "Raider Roadmap", "Your Profile Snapshot".
+- `src/components/AppNav.tsx` — wrap brand "RaidersMatch" and each nav link label (`Home`, `Portfolio`, `Matches`, …). Custom-tab labels stay dynamic from DB.
+
+Note: `EditableText` already exists. The interpolated `{username}` and `{gradYear}` stay as React expressions outside the wrapped text.
 
 ---
 
-## 3. Randomized adaptive quiz (the big one)
+## 2. Fix international matching + Imperial College London tier
 
-Replace the fixed 10-question vibe poll with a pooled, randomized, weighted quiz.
+Problem: intl schools are tiered purely off `admissionRate` thresholds, ignoring user GPA/SAT, so Imperial (~14% admit) is locked to "Far Reach" for everyone.
 
-**New file `src/lib/quiz-engine.ts`**
-- Question bank: 6 categories (Academics, Career, Campus Life, Personality, Cost, Location) with 12–18 questions each. Each question:
-  ```ts
-  { id, category, text, optionA, optionB, vectorA, vectorB, topicTags }
-  ```
-  where `vectorA`/`vectorB` are partial `UserVector` deltas.
-- Selector: given a `seed` (stored per session in localStorage so a refresh keeps the same quiz), pick **3 questions per category** with no overlapping `topicTags`, then shuffle the combined list. Seeded RNG (mulberry32) so the seed is reproducible.
-- Anti-repeat: store seen-question hashes in `localStorage` per user; the selector deprioritizes questions already seen in the last 2 sessions.
+Fix:
 
-**Scoring → `UserVector`**
-```ts
-{ academics, career, social, cost, independence, prestige, location, workload, extracurricular }
+- In `src/lib/college-api.ts` (the intl mapping block ~lines 614–629): replace the hard admit-rate ladder with the same `getTier(...)` call US schools use, passing `userSat`, `gpaNum`, `aps.length`, `testOptional`. This lets a strong applicant reach "Possible Reach" or better at intl schools.
+- Recompute `chancePct` for intl using the same `estimateChancePct` so it can read above 1–2% for top profiles.
+- Verify `src/lib/international-colleges.ts` exposes a realistic `admissionRate` for Imperial (0.14) and `satAvg` (1480 equivalent). Update the seed row if it's missing/too low.
+
+---
+
+## 3. Stronger matching algorithm + clearer disclaimer
+
+Replace the piecewise admit-chance estimator with a logistic model that uses GPA, test score (or test-optional flag), AP rigor, EC depth, leadership signal, achievements, and service hours — not only test/GPA/admit-rate.
+
+Pseudocode (in `estimateChancePct`):
+
 ```
-Each 0–1, normalized at the end.
-
-**College vector**
-- Derived in `college-api.ts` from existing Scorecard fields (admit rate → prestige, size → social, cost → cost level, locale → location, % STEM/business → workload, etc.). No new API calls.
-
-**Final match score**
+z =  β0
+   + β1 * (userGpa - 3.5)
+   + β2 * ((userSat - schoolSat)/100)         // 0 if test-optional or missing
+   + β3 * apRigorScore
+   + β4 * ecDepthScore
+   + β5 * leadershipFlag
+   + β6 * achievementsScore
+   + β7 * serviceHoursScore
+   + β8 * log(admRate)                          // school selectivity baseline
+chance = 1 / (1 + exp(-z))                      // logistic squashing → 0..1
 ```
-final = baseFit * 0.6  +  vectorSimilarity * 0.3  +  chancePct/100 * 0.1
-```
-plus a 10% "exploration" slot in the top-15 reserved for schools just outside the predicted top to avoid overfitting (per the user's anti-bias rule).
 
-**Adaptive layer (lightweight, client-side)**
-- Track bookmark / "not interested" clicks per category. Adjust per-user category weights with `α = 0.05`. Persist in `profiles.profile_data.adaptive_weights` (already a free-form jsonb column, no migration needed).
+Clamp 1–99. Coefficients chosen so a 3.9 GPA, 1500 SAT, 6 APs, strong ECs at a 14% admit-rate school produces a realistic ~25–40% chance instead of <5%. Apply the same vector inside `calculateFitScore`'s "chance multiplier" stage so fit is consistent.
 
-**UI**
-- Update `src/components/VibePollQuiz.tsx` to drive off the engine instead of the static `VIBE_POLL_QUESTIONS` array. Same look (progress bar, A/B cards, dots), no design changes.
-- Add a "🎲 Retake with new questions" button that bumps the seed.
+Disclaimer (UI in `MatchesPage.tsx`): replace the existing chance-warning copy with: "Estimated chance is a model — it factors GPA, test scores, AP rigor, ECs, leadership, achievements, and service hours, but cannot see essays, recs, demonstrated interest, legacy, or institutional priorities. Treat it as directional, not predictive." Show the same line on each match card's "More info" panel and above the results list.
 
 ---
 
-## 4. Admin-managed custom tabs
+## 4. Remove salary data
 
-**DB**: new table `custom_tabs`
-```
-id uuid PK, slug text unique, title text, icon text,
-order_index int, content jsonb, published bool,
-created_at, updated_at
-```
-RLS: public read where `published = true`; admin-only write.
-
-**Frontend**
-- `src/lib/custom-tabs.ts` — fetch/cache published tabs.
-- `src/components/AppNav.tsx` — append custom tabs to the nav after the built-ins, ordered by `order_index`.
-- `src/pages/Index.tsx` — when `page` matches a custom slug, render `<CustomTabPage tab={...} />`.
-- `src/components/CustomTabPage.tsx` — renders the `content` jsonb (supports blocks: `heading`, `text`, `image`, `link`, `card-grid`). Read-only for normal users.
-- `src/components/admin/CustomTabsAdminPanel.tsx` — list/create/edit/delete/reorder + a simple block editor. Wired into `AdminDashboard`. Normal users never see this.
+- `CollegeResult.avgSalary10yr` field stays in the type as optional (to avoid touching every consumer) but stop populating it in `searchColleges` and remove the Scorecard fields `latest.earnings.10_yrs_after_entry.median` / `6_yrs_after_entry.median` from the `fields` list.
+- Delete every salary render in `src/components/MatchesPage.tsx` (badges, more-info row, sort options if any).
 
 ---
 
-## 5. Out of scope for this round
+## 5. Visit / open tracking
 
-- Collaborative-filtering "users like you" boost — needs aggregated cross-user data and a separate analytics pipeline. I'll stub the hook so it can be added later.
-- Implicit feedback (scroll depth, time on card) — same reason; explicit bookmark/dismiss feedback is in.
-- Niche scraping for actual embedded tour videos — Niche blocks scraping, so we deep-link to their visit page (which hosts the tour) instead.
+Add lightweight client-side analytics:
+
+- New table `page_visits` (migration): `user_id uuid null`, `email text null`, `path text`, `visited_at timestamptz default now()`. RLS: anyone authenticated can insert their own row; admins read all.
+- New `src/lib/visit-tracker.ts`: on app mount and on every `visibilitychange → visible` and on every `setPage` in `Index.tsx`, insert a row (debounced 1s, deduped per path within 30s).
+- Wire into `Index.tsx` `useEffect` watching `page` + a `document.visibilitychange` listener.
+- Surface a simple "Visits this week" counter in `AdminDashboard` (read-only count query).
 
 ---
 
-## File list
+## 6. In-app browser detection (Instagram / TikTok / FB / X)
 
-**Edited**
-- `src/lib/college-api.ts` — classification fix, vector derivation, portfolio-driven fit score
-- `src/components/MatchesPage.tsx` — Niche tour link, chance disclaimer, classification options, custom tab routing handoff
-- `src/components/VibePollQuiz.tsx` — drive off quiz engine
-- `src/components/AppNav.tsx` — custom tabs
-- `src/pages/Index.tsx` — custom tab routing
-- `src/components/admin/AdminDashboard.tsx` — wire admin panel
+- New `src/lib/in-app-browser.ts`: regex on `navigator.userAgent` for `Instagram|FBAN|FBAV|TikTok|Twitter|Line|MicroMessenger`.
+- In `AuthPage.tsx`, if detected, render a top banner: "You're in an in-app browser. Google sign-in won't work here — tap the ⋯ menu and choose 'Open in Browser' (Safari/Chrome)." Disable the Google button (still show email/password).
 
-**New**
-- `src/lib/quiz-engine.ts`
-- `src/lib/custom-tabs.ts`
-- `src/components/CustomTabPage.tsx`
-- `src/components/admin/CustomTabsAdminPanel.tsx`
-- migration: `custom_tabs` table + RLS
+---
 
-Approve and I'll ship it in one pass.
+## 7. Account-linking (Google ↔ email)
+
+Supabase auto-links on verified email when both providers verify the same address. Add a UX layer:
+
+- After `signInWithGoogle` succeeds, query `auth.users.identities` via `supabase.auth.getUser()`; if more than one identity is present, show toast "Linked your Google sign-in to your existing email account."
+- If a user tries email/password sign-up with an email that already has a Google identity (returns `User already registered`), surface: "This email is already registered with Google. Use 'Continue with Google' instead."
+- No DB changes needed; logic lives in `src/lib/auth.ts` and `AuthPage.tsx`.
+
+---
+
+## 8. General bugs found while exploring (fix in pass)
+
+- `EditableText.tsx` cleanup-effect bug: `return () => { unsub; }` discards the unsubscribe call — should be `return unsub;` so listeners actually detach. Fix.
+- ANNH/PBI Scorecard fields are still requested but unused — drop from `fields` list.
+
+---
+
+## Technical Section
+
+**Database migration (one):**
+
+```sql
+create table public.page_visits (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  email text,
+  path text not null,
+  visited_at timestamptz not null default now()
+);
+alter table public.page_visits enable row level security;
+create policy "users insert own visits" on public.page_visits
+  for insert with check (auth.uid() = user_id or user_id is null);
+create policy "admins read visits" on public.page_visits
+  for select using (has_role(auth.uid(),'admin'));
+create index page_visits_visited_at_idx on public.page_visits(visited_at desc);
+```
+
+**Files touched (summary):**
+
+- Edit: `src/components/AuthPage.tsx`, `HomePage.tsx`, `AppNav.tsx`, `MatchesPage.tsx`, `EditableText.tsx`, `Index.tsx`, `lib/college-api.ts`, `lib/international-colleges.ts`, `lib/auth.ts`, `components/admin/AdminDashboard.tsx`
+- Create: `src/lib/visit-tracker.ts`, `src/lib/in-app-browser.ts`, one supabase migration
+
+**Verification:**
+
+- Build passes (handled by harness).
+- Sanity-check Imperial College London now returns a non-Far-Reach tier for a 3.9/1500/6AP profile.
+- Confirm salary text/badges no longer render anywhere in `MatchesPage`.
+- Admin double-clicks any wrapped label and edit persists across reload.(also make sure edits in portfollio constantly mathes changes in matches pepercentages and all that it should be different percentages for different info/ it should never be the ame and use info/data from real students across the net to make sure the students match and adminr ate matches if their stats is also similar to exisiting students)
