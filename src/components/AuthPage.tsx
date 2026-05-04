@@ -11,6 +11,8 @@ import {
   applyRememberMe, getRememberedEmail, setRememberedEmail, clearRememberedEmail,
   getRememberFlag,
 } from "@/lib/remember-me";
+import { isInAppBrowser, inAppBrowserName } from "@/lib/in-app-browser";
+import EditableText from "@/components/EditableText";
 import { toast } from "sonner";
 
 interface AuthPageProps {
@@ -145,8 +147,17 @@ const AuthPage = ({ onLogin }: AuthPageProps) => {
     <div className="auth-bg min-h-screen flex items-center justify-center p-5">
       <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
         <div className="flex items-center justify-center mb-6">
-          <h1 className="text-3xl font-bold text-primary">RaidersMatch</h1>
+          <h1 className="text-3xl font-bold text-primary">
+            <EditableText textKey="auth.brand" defaultValue="RaidersMatch" />
+          </h1>
         </div>
+
+        {isInAppBrowser() && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 rounded-lg p-3 mb-4 text-left text-xs text-foreground">
+            ⚠️ You're inside the <b>{inAppBrowserName()}</b> in-app browser. Google sign-in is blocked here.
+            Tap the <b>⋯</b> menu and choose <b>"Open in Browser"</b> (Safari / Chrome) to continue.
+          </div>
+        )}
 
         {error && <p className="text-destructive text-sm mb-4">{error}</p>}
 
