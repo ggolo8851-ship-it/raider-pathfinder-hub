@@ -465,8 +465,8 @@ export async function searchColleges(
     "latest.admissions.admission_rate.overall",
     "latest.admissions.sat_scores.average.overall",
     "latest.admissions.test_requirements",
-    "latest.earnings.10_yrs_after_entry.median",
-    "latest.earnings.6_yrs_after_entry.median",
+    // Salary fields removed per product decision (no median earnings shown)
+
     "latest.student.demographics.race_ethnicity.white",
     "latest.student.demographics.race_ethnicity.black",
     "latest.student.demographics.race_ethnicity.hispanic",
