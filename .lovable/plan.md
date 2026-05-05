@@ -1,130 +1,53 @@
-## Goal
+## Goals
 
-Ship a multi-part platform upgrade: editable copy across Auth/Home/Nav, fix international-college matching (Imperial College London tier), strip salary data, add a stronger admission-chance algorithm with a clearer disclaimer, track site visits, detect in-app browsers, surface Google↔email account-linking, and tighten matching math.
+1. Add a **Legal & Privacy consent** page that every user must agree to once (new signups + existing users on next visit).
+2. Fix the **international match clustering bug** — every intl school currently gets fitScore 75 or 55, so all percentages look identical. Replace with a real per-school calculation.
+3. **Expand the international college dataset** (Asia + Europe focus) and **add AANAPISI institutions**, with dedupe (no school added twice).
+4. Add **Google Analytics (G-YYQ681MRDY)** to `index.html`.
+5. Small polish: international school matching must reflect country/selectivity differences.
 
----
+## Implementation
 
-## 1. Wrap Auth, Home, and Nav text in `EditableText`
+### 1. Legal consent (one-time gate)
 
-Wrap the top headings, button labels, hero copy, and nav link labels. Each gets a stable `textKey` like `auth.title`, `home.welcome_prefix`, `nav.matches`. Default value = the current literal so non-admins see no change. Admins double-click to edit; values persist in `text_overrides`.
+- **DB**: new column `profiles.legal_accepted_at TIMESTAMPTZ NULL` (nullable, no default → null = not yet accepted).
+- **New component** `src/components/LegalConsentPage.tsx` — full RaiderMatch Legal & Privacy text (the version supplied), single "I Agree & Continue" button. Writes `legal_accepted_at = now()` to the user's profile row.
+- **Wire into `Index.tsx**`: after auth + before onboarding, check `profiles.legal_accepted_at`. If null → render `LegalConsentPage`. After accept, continue to onboarding/home.
+- **Signup flow** still works: new users hit it the first time they reach `Index`; existing users hit it once on their next session.
 
-Files:
+### 2. International match scoring fix
 
-- `src/components/AuthPage.tsx` — wrap "RaidersMatch", section headings, sign-in/sign-up button labels, "Continue with Google", help text.
-- `src/components/HomePage.tsx` — wrap "Welcome, …!", "ERHS Students for Success", the mission paragraph, the SSL/aid headings, link button labels (FAFSA, MHEC, etc.), "Raider Roadmap", "Your Profile Snapshot".
-- `src/components/AppNav.tsx` — wrap brand "RaidersMatch" and each nav link label (`Home`, `Portfolio`, `Matches`, …). Custom-tab labels stay dynamic from DB.
+Inside `searchColleges` in `src/lib/college-api.ts`, replace the hardcoded `cr.fitScore = matchesMajor ? 75 : 55` with the same `calculateFitScore(...)` call US schools use, adapted to the intl row (synthesize the minimal Scorecard-shape object it expects, or call a small `calculateIntlFitScore` helper that mirrors the logic but uses `row.programs`, `row.admit_rate`, `cr.satAvg`).
 
-Note: `EditableText` already exists. The interpolated `{username}` and `{gradYear}` stay as React expressions outside the wrapped text.
+Each intl school's `fitScore` and `chancePct` will then vary based on:
 
----
+- user GPA / SAT vs school's SAT
+- AP count, EC depth, leadership, achievements
+- school admit rate (country-specific selectivity is captured here via the per-school admit_rate / SAT fallback)
+- major match against `row.programs`
 
-## 2. Fix international matching + Imperial College London tier
+### 3. Expanded international + AANAPISI dataset
 
-Problem: intl schools are tiered purely off `admissionRate` thresholds, ignoring user GPA/SAT, so Imperial (~14% admit) is locked to "Far Reach" for everyone.
+- **One migration** that inserts new rows into `international_colleges`, guarded by `ON CONFLICT (name) DO NOTHING` (and a unique index on `name` first if not present) so we never duplicate existing entries.
+- New intl rows (Asia + Europe focus): ETH Zurich, EPFL, U Amsterdam, TU Delft, U Copenhagen, Lund, Heidelberg, TU Munich, Sorbonne, KU Leuven, U Tokyo, Kyoto U, Osaka U, NUS, NTU, Tsinghua, Peking, Fudan, Seoul National, KAIST, Yonsei, HKUST, U Hong Kong (skip any already present).
+- **AANAPISI**: add an `institutionalClassification` tag `"AANAPISI"` for the 14 named institutions in `src/lib/college-api.ts` (hardcoded name list, similar to how HBCU/HSI flags are derived). These are US schools — they live in the Scorecard API, so no new table rows needed; they'll just gain the tag on output.
 
-Fix:
+### 4. Google Analytics
 
-- In `src/lib/college-api.ts` (the intl mapping block ~lines 614–629): replace the hard admit-rate ladder with the same `getTier(...)` call US schools use, passing `userSat`, `gpaNum`, `aps.length`, `testOptional`. This lets a strong applicant reach "Possible Reach" or better at intl schools.
-- Recompute `chancePct` for intl using the same `estimateChancePct` so it can read above 1–2% for top profiles.
-- Verify `src/lib/international-colleges.ts` exposes a realistic `admissionRate` for Imperial (0.14) and `satAvg` (1480 equivalent). Update the seed row if it's missing/too low.
+Add the gtag.js snippet to `<head>` of `index.html` (immediately after `<meta name="author">`).
 
----
-
-## 3. Stronger matching algorithm + clearer disclaimer
-
-Replace the piecewise admit-chance estimator with a logistic model that uses GPA, test score (or test-optional flag), AP rigor, EC depth, leadership signal, achievements, and service hours — not only test/GPA/admit-rate.
-
-Pseudocode (in `estimateChancePct`):
+### 5. Files
 
 ```
-z =  β0
-   + β1 * (userGpa - 3.5)
-   + β2 * ((userSat - schoolSat)/100)         // 0 if test-optional or missing
-   + β3 * apRigorScore
-   + β4 * ecDepthScore
-   + β5 * leadershipFlag
-   + β6 * achievementsScore
-   + β7 * serviceHoursScore
-   + β8 * log(admRate)                          // school selectivity baseline
-chance = 1 / (1 + exp(-z))                      // logistic squashing → 0..1
+NEW   src/components/LegalConsentPage.tsx
+EDIT  src/pages/Index.tsx                  -- gate on legal_accepted_at
+EDIT  src/lib/college-api.ts               -- intl fit/chance fix + AANAPISI tag
+EDIT  index.html                           -- GA4 gtag
+MIG   add profiles.legal_accepted_at + unique(international_colleges.name)
+       + INSERT ... ON CONFLICT DO NOTHING for new intl rows
 ```
 
-Clamp 1–99. Coefficients chosen so a 3.9 GPA, 1500 SAT, 6 APs, strong ECs at a 14% admit-rate school produces a realistic ~25–40% chance instead of <5%. Apply the same vector inside `calculateFitScore`'s "chance multiplier" stage so fit is consistent.
+## Out of scope (not touching this turn)
 
-Disclaimer (UI in `MatchesPage.tsx`): replace the existing chance-warning copy with: "Estimated chance is a model — it factors GPA, test scores, AP rigor, ECs, leadership, achievements, and service hours, but cannot see essays, recs, demonstrated interest, legacy, or institutional priorities. Treat it as directional, not predictive." Show the same line on each match card's "More info" panel and above the results list.
-
----
-
-## 4. Remove salary data
-
-- `CollegeResult.avgSalary10yr` field stays in the type as optional (to avoid touching every consumer) but stop populating it in `searchColleges` and remove the Scorecard fields `latest.earnings.10_yrs_after_entry.median` / `6_yrs_after_entry.median` from the `fields` list.
-- Delete every salary render in `src/components/MatchesPage.tsx` (badges, more-info row, sort options if any).
-
----
-
-## 5. Visit / open tracking
-
-Add lightweight client-side analytics:
-
-- New table `page_visits` (migration): `user_id uuid null`, `email text null`, `path text`, `visited_at timestamptz default now()`. RLS: anyone authenticated can insert their own row; admins read all.
-- New `src/lib/visit-tracker.ts`: on app mount and on every `visibilitychange → visible` and on every `setPage` in `Index.tsx`, insert a row (debounced 1s, deduped per path within 30s).
-- Wire into `Index.tsx` `useEffect` watching `page` + a `document.visibilitychange` listener.
-- Surface a simple "Visits this week" counter in `AdminDashboard` (read-only count query).
-
----
-
-## 6. In-app browser detection (Instagram / TikTok / FB / X)
-
-- New `src/lib/in-app-browser.ts`: regex on `navigator.userAgent` for `Instagram|FBAN|FBAV|TikTok|Twitter|Line|MicroMessenger`.
-- In `AuthPage.tsx`, if detected, render a top banner: "You're in an in-app browser. Google sign-in won't work here — tap the ⋯ menu and choose 'Open in Browser' (Safari/Chrome)." Disable the Google button (still show email/password).
-
----
-
-## 7. Account-linking (Google ↔ email)
-
-Supabase auto-links on verified email when both providers verify the same address. Add a UX layer:
-
-- After `signInWithGoogle` succeeds, query `auth.users.identities` via `supabase.auth.getUser()`; if more than one identity is present, show toast "Linked your Google sign-in to your existing email account."
-- If a user tries email/password sign-up with an email that already has a Google identity (returns `User already registered`), surface: "This email is already registered with Google. Use 'Continue with Google' instead."
-- No DB changes needed; logic lives in `src/lib/auth.ts` and `AuthPage.tsx`.
-
----
-
-## 8. General bugs found while exploring (fix in pass)
-
-- `EditableText.tsx` cleanup-effect bug: `return () => { unsub; }` discards the unsubscribe call — should be `return unsub;` so listeners actually detach. Fix.
-- ANNH/PBI Scorecard fields are still requested but unused — drop from `fields` list.
-
----
-
-## Technical Section
-
-**Database migration (one):**
-
-```sql
-create table public.page_visits (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid,
-  email text,
-  path text not null,
-  visited_at timestamptz not null default now()
-);
-alter table public.page_visits enable row level security;
-create policy "users insert own visits" on public.page_visits
-  for insert with check (auth.uid() = user_id or user_id is null);
-create policy "admins read visits" on public.page_visits
-  for select using (has_role(auth.uid(),'admin'));
-create index page_visits_visited_at_idx on public.page_visits(visited_at desc);
-```
-
-**Files touched (summary):**
-
-- Edit: `src/components/AuthPage.tsx`, `HomePage.tsx`, `AppNav.tsx`, `MatchesPage.tsx`, `EditableText.tsx`, `Index.tsx`, `lib/college-api.ts`, `lib/international-colleges.ts`, `lib/auth.ts`, `components/admin/AdminDashboard.tsx`
-- Create: `src/lib/visit-tracker.ts`, `src/lib/in-app-browser.ts`, one supabase migration
-
-**Verification:**
-
-- Build passes (handled by harness).
-- Sanity-check Imperial College London now returns a non-Far-Reach tier for a 3.9/1500/6AP profile.
-- Confirm salary text/badges no longer render anywhere in `MatchesPage`.
-- Admin double-clicks any wrapped label and edit persists across reload.(also make sure edits in portfollio constantly mathes changes in matches pepercentages and all that it should be different percentages for different info/ it should never be the ame and use info/data from real students across the net to make sure the students match and adminr ate matches if their stats is also similar to exisiting students)
+- Distance rule, real-time updates, portfolio/quiz fallback — already implemented in prior turns; will only revisit if you say they're still broken.
+- Visit tracking — already shipped.(make sure everythin works, fix all bugs too, everything shlioudl eb functional_
