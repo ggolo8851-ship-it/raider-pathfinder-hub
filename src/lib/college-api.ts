@@ -4,6 +4,31 @@ import { fetchIntlColleges, intlToCollegeResult } from "@/lib/international-coll
 const API_KEY = 'T1nIiVJanrQqJgS1OmJ7UKh0NpxJdzX9bzCeFpXo';
 const ERHS_COORDS = { lat: 38.9925, lon: -76.8743 };
 
+// Canonical AANAPISI institutions (fallback when Scorecard's flag isn't set)
+const AANAPISI_NAMES = new Set<string>([
+  "san francisco state university",
+  "university of california-irvine",
+  "university of california, irvine",
+  "california state university-long beach",
+  "california state university, long beach",
+  "san jose state university",
+  "university of hawaii at manoa",
+  "cuny city college",
+  "city college of new york",
+  "university of illinois chicago",
+  "university of illinois at chicago",
+  "the university of texas at arlington",
+  "university of texas at arlington",
+  "de anza college",
+  "university of nevada-las vegas",
+  "university of nevada, las vegas",
+  "santa monica college",
+  "city college of san francisco",
+  "borough of manhattan community college",
+  "hostos community college",
+  "eugenio maria de hostos community college",
+]);
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
   const toRad = (deg: number) => deg * Math.PI / 180;
