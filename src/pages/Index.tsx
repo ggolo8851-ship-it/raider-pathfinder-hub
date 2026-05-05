@@ -57,6 +57,22 @@ const Index = () => {
     setNeedsOnboarding(!users[email].setupComplete);
   }, [email, authUser]);
 
+  // Check whether this user has accepted the legal/privacy page
+  useEffect(() => {
+    if (!authUser?.id) { setLegalAccepted(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("legal_accepted_at")
+        .eq("user_id", authUser.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setLegalAccepted(!!data?.legal_accepted_at);
+    })();
+    return () => { cancelled = true; };
+  }, [authUser?.id]);
+
   const handleLogout = useCallback(async () => {
     clearSession();
     await signOut();
@@ -89,6 +105,15 @@ const Index = () => {
   }
 
   if (!session || !email) return <AuthPage onLogin={() => { /* auth state listener handles routing */ }} />;
+
+  // Wait for the legal-accepted lookup before showing onboarding/app
+  if (legalAccepted === null) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
+  }
+
+  if (!legalAccepted && authUser?.id) {
+    return <LegalConsentPage userId={authUser.id} onAccepted={() => setLegalAccepted(true)} />;
+  }
 
   if (needsOnboarding) {
     return <OnboardingFlow email={email} onComplete={() => setNeedsOnboarding(false)} />;
