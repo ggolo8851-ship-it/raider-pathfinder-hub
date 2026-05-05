@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getUsers, saveUsers, setSession, clearSession, getDefaultProfile } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import AuthPage from "@/components/AuthPage";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import AppNav from "@/components/AppNav";
@@ -16,6 +17,7 @@ import GraduationPage from "@/components/GraduationPage";
 import FacultyPage from "@/components/FacultyPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import CustomTabPage from "@/components/CustomTabPage";
+import LegalConsentPage from "@/components/LegalConsentPage";
 import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
 import { trackVisit } from "@/lib/visit-tracker";
 
@@ -32,6 +34,7 @@ const Index = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [adminMode, setAdminMode] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState<boolean | null>(null);
 
   const email = authUser?.email?.toLowerCase() ?? null;
 
