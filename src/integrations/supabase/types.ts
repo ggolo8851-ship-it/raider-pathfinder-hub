@@ -413,6 +413,7 @@ export type Database = {
           flagged: boolean
           grad_year: number | null
           id: string
+          legal_accepted_at: string | null
           profile_data: Json
           setup_complete: boolean
           updated_at: string
@@ -427,6 +428,7 @@ export type Database = {
           flagged?: boolean
           grad_year?: number | null
           id?: string
+          legal_accepted_at?: string | null
           profile_data?: Json
           setup_complete?: boolean
           updated_at?: string
@@ -441,6 +443,7 @@ export type Database = {
           flagged?: boolean
           grad_year?: number | null
           id?: string
+          legal_accepted_at?: string | null
           profile_data?: Json
           setup_complete?: boolean
           updated_at?: string

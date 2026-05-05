@@ -4,6 +4,31 @@ import { fetchIntlColleges, intlToCollegeResult } from "@/lib/international-coll
 const API_KEY = 'T1nIiVJanrQqJgS1OmJ7UKh0NpxJdzX9bzCeFpXo';
 const ERHS_COORDS = { lat: 38.9925, lon: -76.8743 };
 
+// Canonical AANAPISI institutions (fallback when Scorecard's flag isn't set)
+const AANAPISI_NAMES = new Set<string>([
+  "san francisco state university",
+  "university of california-irvine",
+  "university of california, irvine",
+  "california state university-long beach",
+  "california state university, long beach",
+  "san jose state university",
+  "university of hawaii at manoa",
+  "cuny city college",
+  "city college of new york",
+  "university of illinois chicago",
+  "university of illinois at chicago",
+  "the university of texas at arlington",
+  "university of texas at arlington",
+  "de anza college",
+  "university of nevada-las vegas",
+  "university of nevada, las vegas",
+  "santa monica college",
+  "city college of san francisco",
+  "borough of manhattan community college",
+  "hostos community college",
+  "eugenio maria de hostos community college",
+]);
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
   const toRad = (deg: number) => deg * Math.PI / 180;
@@ -597,6 +622,10 @@ export async function searchColleges(
       if (c['school.minority_serving.hispanic'] === 1) msi.push("HSI");
       if (c['school.minority_serving.aanapii'] === 1) msi.push("AANAPISI");
       if (c['school.minority_serving.tribal'] === 1) msi.push("TCU");
+      // Hardcoded AANAPISI fallback for canonical institutions (in case Scorecard flag is stale)
+      if (!msi.includes("AANAPISI") && AANAPISI_NAMES.has(name?.toLowerCase?.() || "")) {
+        msi.push("AANAPISI");
+      }
       // ANNH and PBI intentionally excluded per product decision
       if (womenOnly) msi.push("Women's College");
       if (menOnly) msi.push("Men's College");
@@ -660,12 +689,31 @@ export async function searchColleges(
           userGpa: gpaNum, testOptional,
           apCount: aps.length, ecCount: ecCountIntl,
           hasLeadership: hasLeadIntl,
+          achievementsCount: 0,
+          serviceHours: 0,
         });
-        // Boost fitScore for intl schools that match the user's major area
-        const matchesMajor = row.programs.some(p => p.toLowerCase().includes(major.toLowerCase()) || major.toLowerCase().includes(p.toLowerCase()));
-        cr.fitScore = matchesMajor ? 75 : 55;
-        // Use the same user-aware tier function as US schools so a strong applicant
-        // can land Possible Reach / Target at intl schools (e.g., Imperial College London).
+        // Build a Scorecard-shaped pseudo-object so we can reuse calculateFitScore
+        // and get a UNIQUE score per intl school (no more 75/55 clustering).
+        const matchesMajor = row.programs.some(p =>
+          p.toLowerCase().includes(major.toLowerCase()) ||
+          major.toLowerCase().includes(p.toLowerCase().split(/[\s&]/)[0])
+        );
+        const pseudo: any = {
+          'latest.admissions.admission_rate.overall': cr.admissionRate,
+          'latest.admissions.sat_scores.average.overall': cr.satAvg,
+          'latest.student.size': cr.enrollment || 15000,
+          'latest.cost.tuition.in_state': cr.costOutState,
+          'school.state': '',
+          [queryField]: matchesMajor ? 0.12 : 0.02,
+        };
+        cr.fitScore = calculateFitScore(
+          pseudo, queryField, gpaNum, aps.length, major,
+          clubs, extracurriculars, sports,
+          0, // distance neutral for intl
+          vibeAnswers, testOptional, userSat, interests,
+          [], 0, "None"
+        );
+        // Use the same user-aware tier function as US schools.
         cr.tier = getTier(cr.satAvg, cr.admissionRate, userSat, gpaNum, aps.length, testOptional);
         return cr;
       });
