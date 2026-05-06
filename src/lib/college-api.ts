@@ -692,6 +692,11 @@ export async function searchColleges(
           achievementsCount: 0,
           serviceHours: 0,
         });
+        if (cr.chancePct != null) {
+          // ±2% per-school nudge so similar schools don't collide.
+          const cn = (hashSeed(row.name + "_c") % 5) - 2;
+          cr.chancePct = Math.max(1, Math.min(99, cr.chancePct + cn));
+        }
         // Build a Scorecard-shaped pseudo-object so we can reuse calculateFitScore
         // and get a UNIQUE score per intl school (no more 75/55 clustering).
         const matchesMajor = row.programs.some(p =>
