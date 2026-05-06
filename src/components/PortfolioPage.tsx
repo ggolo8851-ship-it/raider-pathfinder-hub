@@ -127,6 +127,11 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
       }
     } catch {}
     setSaving(false);
+    try {
+      const { toast } = await import("sonner");
+      toast.success("Profile saved");
+    } catch {}
+    // Notify parent of changes (e.g., to refresh matches) but stay on Portfolio.
     onUpdate();
   };
 
