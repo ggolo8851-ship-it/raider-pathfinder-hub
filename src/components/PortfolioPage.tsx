@@ -381,7 +381,7 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
         )}
 
         <Button variant="outline" onClick={() => setShowVibeQuiz(true)} className="w-full mt-2 mb-2">
-          🎯 Update College Vibe Quiz ({Object.keys(profile.vibeAnswers || {}).length}/{VIBE_POLL_QUESTIONS.length} answered)
+          🎯 Update College Vibe Quiz ({Math.min(18, Object.keys(profile.vibeAnswers || {}).length)}/18 answered)
         </Button>
 
         <Button onClick={handleSave} className="w-full mt-4" disabled={saving}>
