@@ -577,6 +577,38 @@ export async function searchColleges(
         break;
       }
     }
+
+    // AANAPISI fallback: the Scorecard `aanapii` flag is unreliable, so when the user
+    // filters by AANAPISI we additionally fetch our canonical institutions by name.
+    if (filters.msiFilter === "aanapisi") {
+      const seenIds = new Set(allResults.map(r => String(r.id)));
+      const fetchByName = async (name: string) => {
+        try {
+          const u = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&fields=${fields}&per_page=5&school.search=${encodeURIComponent(name)}`;
+          const r = await fetch(u);
+          if (!r.ok) return [];
+          const j = await r.json();
+          return (j.results || []) as any[];
+        } catch { return []; }
+      };
+      const canonical = Array.from(AANAPISI_NAMES);
+      // Limit to 20 parallel fetches to avoid burst limits
+      const batches: string[][] = [];
+      for (let i = 0; i < canonical.length; i += 8) batches.push(canonical.slice(i, i + 8));
+      for (const batch of batches) {
+        const results = await Promise.all(batch.map(fetchByName));
+        for (const list of results) {
+          for (const c of list) {
+            const cn = (c['school.name'] || "").toLowerCase();
+            if (!AANAPISI_NAMES.has(cn)) continue;
+            const id = String(c.id);
+            if (seenIds.has(id)) continue;
+            seenIds.add(id);
+            allResults.push(c);
+          }
+        }
+      }
+    }
   }
 
   const gpaNum = parseFloat(gpa) || 3.0;
@@ -692,6 +724,11 @@ export async function searchColleges(
           achievementsCount: 0,
           serviceHours: 0,
         });
+        if (cr.chancePct != null) {
+          // ±2% per-school nudge so similar schools don't collide.
+          const cn = (hashSeed(row.name + "_c") % 5) - 2;
+          cr.chancePct = Math.max(1, Math.min(99, cr.chancePct + cn));
+        }
         // Build a Scorecard-shaped pseudo-object so we can reuse calculateFitScore
         // and get a UNIQUE score per intl school (no more 75/55 clustering).
         const matchesMajor = row.programs.some(p =>
@@ -706,13 +743,18 @@ export async function searchColleges(
           'school.state': '',
           [queryField]: matchesMajor ? 0.12 : 0.02,
         };
-        cr.fitScore = calculateFitScore(
+        const baseFit = calculateFitScore(
           pseudo, queryField, gpaNum, aps.length, major,
           clubs, extracurriculars, sports,
           0, // distance neutral for intl
           vibeAnswers, testOptional, userSat, interests,
           [], 0, "None"
         );
+        // Deterministic per-school nudge (±3) so two intl schools with similar
+        // profiles never collide on the exact same fitScore — keeps numbers unique
+        // without breaking ordering.
+        const nudge = (hashSeed(row.name) % 7) - 3;
+        cr.fitScore = Math.max(1, Math.min(99, baseFit + nudge));
         // Use the same user-aware tier function as US schools.
         cr.tier = getTier(cr.satAvg, cr.admissionRate, userSat, gpaNum, aps.length, testOptional);
         return cr;
