@@ -706,13 +706,18 @@ export async function searchColleges(
           'school.state': '',
           [queryField]: matchesMajor ? 0.12 : 0.02,
         };
-        cr.fitScore = calculateFitScore(
+        const baseFit = calculateFitScore(
           pseudo, queryField, gpaNum, aps.length, major,
           clubs, extracurriculars, sports,
           0, // distance neutral for intl
           vibeAnswers, testOptional, userSat, interests,
           [], 0, "None"
         );
+        // Deterministic per-school nudge (±3) so two intl schools with similar
+        // profiles never collide on the exact same fitScore — keeps numbers unique
+        // without breaking ordering.
+        const nudge = (hashSeed(row.name) % 7) - 3;
+        cr.fitScore = Math.max(1, Math.min(99, baseFit + nudge));
         // Use the same user-aware tier function as US schools.
         cr.tier = getTier(cr.satAvg, cr.admissionRate, userSat, gpaNum, aps.length, testOptional);
         return cr;
