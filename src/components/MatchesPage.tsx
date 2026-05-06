@@ -369,7 +369,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="reach">All Reach Schools</option>
                     <option value="hidden_ivies">Hidden Ivies</option>
                     <option value="service_academies">Service Academies</option>
-                    <option value="international">International (browse links)</option>
                   </select>
                 </div>
               </div>
