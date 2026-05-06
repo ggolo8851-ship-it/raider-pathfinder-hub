@@ -149,7 +149,7 @@ const Index = () => {
       {page === "matches" && <MatchesPage key={refreshKey} profile={user.profile} email={email} />}
       {page === "portfolio" && (
         <PortfolioPage email={email} profile={user.profile} userName={user.name}
-          onUpdate={() => { setRefreshKey(k => k + 1); setPage("home"); }} />
+          onUpdate={() => { setRefreshKey(k => k + 1); }} />
       )}
       {page === "clubs" && <ClubsPage />}
       {page === "sat" && <SATPage />}
