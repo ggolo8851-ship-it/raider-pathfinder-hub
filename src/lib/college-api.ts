@@ -577,6 +577,38 @@ export async function searchColleges(
         break;
       }
     }
+
+    // AANAPISI fallback: the Scorecard `aanapii` flag is unreliable, so when the user
+    // filters by AANAPISI we additionally fetch our canonical institutions by name.
+    if (filters.msiFilter === "aanapisi") {
+      const seenIds = new Set(allResults.map(r => String(r.id)));
+      const fetchByName = async (name: string) => {
+        try {
+          const u = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${API_KEY}&school.operating=1&fields=${fields}&per_page=5&school.search=${encodeURIComponent(name)}`;
+          const r = await fetch(u);
+          if (!r.ok) return [];
+          const j = await r.json();
+          return (j.results || []) as any[];
+        } catch { return []; }
+      };
+      const canonical = Array.from(AANAPISI_NAMES);
+      // Limit to 20 parallel fetches to avoid burst limits
+      const batches: string[][] = [];
+      for (let i = 0; i < canonical.length; i += 8) batches.push(canonical.slice(i, i + 8));
+      for (const batch of batches) {
+        const results = await Promise.all(batch.map(fetchByName));
+        for (const list of results) {
+          for (const c of list) {
+            const cn = (c['school.name'] || "").toLowerCase();
+            if (!AANAPISI_NAMES.has(cn)) continue;
+            const id = String(c.id);
+            if (seenIds.has(id)) continue;
+            seenIds.add(id);
+            allResults.push(c);
+          }
+        }
+      }
+    }
   }
 
   const gpaNum = parseFloat(gpa) || 3.0;
