@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS, ClubRole, SportRole } from "@/lib/store";
 import { geocodeAddress } from "@/lib/college-api";
+import { loadSiteSettings } from "@/lib/feature-flags";
 import VibePollQuiz from "@/components/VibePollQuiz";
 
 interface OnboardingFlowProps {
@@ -11,6 +12,8 @@ interface OnboardingFlowProps {
 }
 
 const MAX_EXTRAS = 15;
+const CLUB_ROLES: ClubRole["role"][] = ["Member", "Management", "Founder"];
+const SPORT_ROLES: SportRole["role"][] = ["Player", "Captain", "Manager"];
 
 const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [step, setStep] = useState<"grad" | "profile" | "clubs" | "extra" | "polls">("grad");
@@ -20,8 +23,12 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [act, setAct] = useState("");
   const [gradYear, setGradYear] = useState("2027");
   const [selectedAps, setSelectedAps] = useState<string[]>([]);
+  const [apScores, setApScores] = useState<Record<string, number>>({});
   const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
+  const [clubRoles, setClubRoles] = useState<ClubRole[]>([]);
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [sportRoles, setSportRoles] = useState<SportRole[]>([]);
+  const [extraSports, setExtraSports] = useState<string[]>([]);
   const [clubSearch, setClubSearch] = useState("");
   const [apSearch, setApSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>([]);
@@ -36,9 +43,22 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [state, setState] = useState("MD");
   const [zipcode, setZipcode] = useState("");
 
+  useEffect(() => { loadSiteSettings().then(s => setExtraSports(s.sports || [])); }, []);
+
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
-  const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
-  const toggleSport = (sport: string) => setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
+  const setApScore = (ap: string, score: number) => setApScores(prev => ({ ...prev, [ap]: score }));
+  const toggleClub = (club: string) => setSelectedClubs(prev => {
+    if (prev.includes(club)) { setClubRoles(r => r.filter(cr => cr.club !== club)); return prev.filter(c => c !== club); }
+    setClubRoles(r => [...r, { club, role: "Member" }]); return [...prev, club];
+  });
+  const toggleSport = (sport: string) => setSelectedSports(prev => {
+    if (prev.includes(sport)) { setSportRoles(r => r.filter(sr => sr.sport !== sport)); return prev.filter(s => s !== sport); }
+    setSportRoles(r => [...r, { sport, role: "Player" }]); return [...prev, sport];
+  });
+  const setClubRole = (club: string, role: ClubRole["role"]) =>
+    setClubRoles(prev => prev.map(cr => cr.club === club ? { ...cr, role } : cr));
+  const setSportRole = (sport: string, role: SportRole["role"]) =>
+    setSportRoles(prev => prev.map(sr => sr.sport === sport ? { ...sr, role } : sr));
 
   const addExtra = () => {
     if (newExtra.trim() && extracurriculars.length < MAX_EXTRAS) {
@@ -61,11 +81,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
-      aps: selectedAps, apScores: {},
-      clubs: selectedClubs, clubRoles: [],
+      aps: selectedAps, apScores,
+      clubs: selectedClubs, clubRoles,
       extracurriculars, achievements,
       serviceHours: 0, isST, testOptional,
-      sports: selectedSports, sportRoles: [],
+      sports: selectedSports, sportRoles,
       interests: [],
       address, city, state, zipcode,
       lat, lon,
@@ -209,24 +229,60 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
           <Input placeholder="Search clubs..." value={clubSearch} onChange={e => setClubSearch(e.target.value)} className="mb-3" />
           <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
             {filteredClubs.map(club => (
-              <label key={club} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
-                {club}
-              </label>
+              <div key={club} className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                  <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
+                  <span className="truncate">{club}</span>
+                </label>
+                {selectedClubs.includes(club) && (
+                  <select value={clubRoles.find(cr => cr.club === club)?.role || "Member"}
+                    onChange={e => setClubRole(club, e.target.value as ClubRole["role"])}
+                    className="w-28 p-1 border border-input rounded bg-card text-xs">
+                    {CLUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mb-4">{selectedClubs.length} club(s) selected</p>
 
           <h3 className="text-lg font-bold text-primary mb-2">🏅 Sports</h3>
-          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
-            {ERHS_SPORTS.map(sport => (
-              <label key={sport} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
-                {sport}
-              </label>
+          <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-2 bg-muted/30">
+            {[...ERHS_SPORTS, ...extraSports].map(sport => (
+              <div key={sport} className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                  <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
+                  <span className="truncate">{sport}</span>
+                </label>
+                {selectedSports.includes(sport) && (
+                  <select value={sportRoles.find(sr => sr.sport === sport)?.role || "Player"}
+                    onChange={e => setSportRole(sport, e.target.value as SportRole["role"])}
+                    className="w-28 p-1 border border-input rounded bg-card text-xs">
+                    {SPORT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mb-4">{selectedSports.length} sport(s) selected</p>
+
+          {selectedAps.length > 0 && (
+            <>
+              <label className="text-sm font-semibold text-foreground">AP Exam Scores (1-5, leave blank if not taken)</label>
+              <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+                {selectedAps.sort().map(ap => (
+                  <div key={ap} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate flex-1">{ap}</span>
+                    <select value={apScores[ap] || ""} onChange={e => setApScore(ap, Number(e.target.value))}
+                      className="w-16 p-1 border border-input rounded bg-card text-sm">
+                      <option value="">—</option>
+                      {[1, 2, 3, 4, 5].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep("profile")} className="flex-1">Back</Button>

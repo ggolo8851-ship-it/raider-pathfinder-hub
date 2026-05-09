@@ -479,6 +479,8 @@ export type Database = {
       site_settings: {
         Row: {
           dropdown_links: Json
+          extra_sports: Json
+          feature_flags: Json
           homepage_hero: Json
           id: string
           logo_url: string | null
@@ -487,6 +489,8 @@ export type Database = {
         }
         Insert: {
           dropdown_links?: Json
+          extra_sports?: Json
+          feature_flags?: Json
           homepage_hero?: Json
           id: string
           logo_url?: string | null
@@ -495,6 +499,8 @@ export type Database = {
         }
         Update: {
           dropdown_links?: Json
+          extra_sports?: Json
+          feature_flags?: Json
           homepage_hero?: Json
           id?: string
           logo_url?: string | null

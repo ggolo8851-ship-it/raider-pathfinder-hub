@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
+import { loadSiteSettings, isFilterVisible, FeatureFlags, DEFAULT_FILTER_FLAGS } from "@/lib/feature-flags";
+
+// Module-level cache so leaving the Matches tab and coming back doesn't refetch
+// — keyed by the exact filter signature + user profile signature.
+const matchCache = new Map<string, CollegeResult[]>();
+const sigOf = (...parts: any[]) => JSON.stringify(parts);
 
 interface MatchesPageProps {
   profile: UserProfile;
@@ -32,6 +38,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [bookmarksLoading, setBookmarksLoading] = useState(false);
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
   const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
+  const [flags, setFlags] = useState<FeatureFlags>({ filters: DEFAULT_FILTER_FLAGS });
+
+  useEffect(() => {
+    loadSiteSettings().then(s => setFlags(s.flags || {}));
+  }, []);
 
   useEffect(() => {
     const users = getUsers();
@@ -68,11 +79,15 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
   useEffect(() => {
     if (tab !== "colleges") return;
-    setLoading(true);
     let cancelled = false;
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
+    const cacheKey = sigOf(filters, profileSig);
+    const cached = matchCache.get(cacheKey);
+    if (cached) { setColleges(cached); setLoading(false); return; }
+    setLoading(true);
     searchColleges(
       profile.major, filters, email, profile.gpa, profile.aps,
       profile.clubs || [], profile.sat || "", profile.act || "",
@@ -85,7 +100,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       .then(async (results) => {
         if (cancelled) return;
         setColleges(results);
-        // Skip AI re-rank during active name search — it would override exact-match priority.
+        matchCache.set(cacheKey, results);
         if (results.length > 0 && !isSearching) {
           const ranked = await aiRankColleges(results, {
             major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
@@ -94,7 +109,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
             vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
           });
-          if (!cancelled) setColleges(ranked);
+          if (!cancelled) { setColleges(ranked); matchCache.set(cacheKey, ranked); }
         }
       })
       .catch(() => { if (!cancelled) setColleges([]); })
@@ -193,14 +208,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance:</b> {c.miles.toFixed(1)} miles {distanceLabel}</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
-          {c.chancePct != null && (
-            <>
-              <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-r p-2 text-xs text-foreground">
-                ⚠️ Estimated chance is a model — it factors GPA, test scores, AP rigor, ECs, leadership, achievements, and service hours, but cannot see essays, recommendations, demonstrated interest, legacy, or institutional priorities. Treat it as <b>directional, not predictive</b>.
-              </div>
-            </>
-          )}
           {c.setting && <p><b>🌆 Setting:</b> {c.setting}</p>}
           {c.athleticDivision && c.athleticDivision !== "Unknown" && <p><b>🏟️ Athletics:</b> {c.athleticDivision}</p>}
           {c.country && c.country !== "USA" && <p><b>🌍 Country:</b> {c.country}</p>}
@@ -291,13 +298,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               )}
               
+              {isFilterVisible(flags, "search") && (
               <div>
                 <label className="text-sm font-semibold text-foreground">🔍 Search College by Name</label>
                 <Input placeholder="e.g. University of Maryland" value={collegeSearch}
                   onChange={e => setCollegeSearch(e.target.value)} className="mt-1" />
               </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {isFilterVisible(flags, "distance") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
                   <input type="range" min="0" max="3000" step="25" value={distance}
@@ -307,6 +317,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <span>No Limit</span><span>3000 mi</span>
                   </div>
                 </div>
+                )}
+                {isFilterVisible(flags, "minDistance") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Min Distance: {minDistance === 0 ? "None" : `${minDistance} miles`}</label>
                   <input type="range" min="0" max="500" step="10" value={minDistance}
@@ -316,9 +328,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <span>None</span><span>500 mi</span>
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {isFilterVisible(flags, "size") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -330,6 +344,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="verylarge">Very Large (25K+)</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "cost") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Max Tuition/Year</label>
                   <select value={maxCost} onChange={e => { setMaxCost(Number(e.target.value)); setCustomMaxCost(""); }}
@@ -347,6 +363,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     onChange={e => { setCustomMaxCost(e.target.value); setMaxCost(0); }}
                     className="mt-1 text-sm" />
                 </div>
+                )}
+                {isFilterVisible(flags, "state") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">State</label>
                   <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}
@@ -356,6 +374,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="out_of_state">Out-of-State Only</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "tier") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Tier</label>
                   <select value={tierFilter} onChange={e => setTierFilter(e.target.value)}
@@ -371,9 +391,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="service_academies">Service Academies</option>
                   </select>
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {isFilterVisible(flags, "classification") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Prestige Class</label>
                   <select value={classificationFilter} onChange={e => setClassificationFilter(e.target.value)}
@@ -385,6 +407,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="tier4">Tier 4 (Strong Regional/Large Publics)</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "athletic") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Athletic Division</label>
                   <select value={athleticFilter} onChange={e => setAthleticFilter(e.target.value)}
@@ -397,6 +421,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="none">No Athletics</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "country") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Country</label>
                   <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
@@ -406,6 +432,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="intl">International Only</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "testPolicy") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Test Policy</label>
                   <select value={testPolicyFilter} onChange={e => setTestPolicyFilter(e.target.value)}
@@ -416,8 +444,10 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="blind">Test-Blind</option>
                   </select>
                 </div>
+                )}
               </div>
 
+              {isFilterVisible(flags, "msi") && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">Institutional Classification</label>
@@ -433,6 +463,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   </select>
                 </div>
               </div>
+              )}
             </div>
           )}
           {/* International browse-links tier removed — use Country filter instead */}
