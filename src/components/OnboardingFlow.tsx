@@ -81,11 +81,11 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     const users = getUsers();
     users[email].profile = {
       major, gpa, sat, act, gradYear,
-      aps: selectedAps, apScores: {},
-      clubs: selectedClubs, clubRoles: [],
+      aps: selectedAps, apScores,
+      clubs: selectedClubs, clubRoles,
       extracurriculars, achievements,
       serviceHours: 0, isST, testOptional,
-      sports: selectedSports, sportRoles: [],
+      sports: selectedSports, sportRoles,
       interests: [],
       address, city, state, zipcode,
       lat, lon,
