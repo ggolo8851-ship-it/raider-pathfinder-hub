@@ -674,13 +674,102 @@ function UsersPanel({ adminEmail }: { adminEmail: string }) {
   );
 }
 
-// =================== FILTERS STUB ===================
+// =================== FILTERS & SETTINGS ===================
 function FiltersStub() {
+  const FILTER_KEYS: { key: string; label: string }[] = [
+    { key: "search", label: "🔍 Search by name" },
+    { key: "distance", label: "Max Distance" },
+    { key: "minDistance", label: "Min Distance" },
+    { key: "size", label: "School Size" },
+    { key: "cost", label: "Max Tuition" },
+    { key: "state", label: "State" },
+    { key: "tier", label: "School Tier" },
+    { key: "classification", label: "Prestige Class" },
+    { key: "athletic", label: "Athletic Division" },
+    { key: "country", label: "Country" },
+    { key: "testPolicy", label: "Test Policy" },
+    { key: "msi", label: "Institutional Classification" },
+  ];
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
+  const [sports, setSports] = useState<string[]>([]);
+  const [newSport, setNewSport] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("site_settings").select("feature_flags, extra_sports").eq("id", "global").maybeSingle();
+      const ff = ((data as any)?.feature_flags?.filters || {}) as Record<string, boolean>;
+      const init: Record<string, boolean> = {};
+      FILTER_KEYS.forEach(f => { init[f.key] = ff[f.key] !== false; });
+      setFlags(init);
+      setSports((((data as any)?.extra_sports) || []) as string[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  const persist = async (next: { flags?: Record<string, boolean>; sports?: string[] }) => {
+    const newFlags = next.flags ?? flags;
+    const newSports = next.sports ?? sports;
+    const { error } = await supabase.from("site_settings").update({
+      feature_flags: { filters: newFlags },
+      extra_sports: newSports,
+    }).eq("id", "global");
+    if (error) toast.error(error.message); else toast.success("Saved");
+  };
+
+  const toggle = (key: string) => {
+    const next = { ...flags, [key]: !flags[key] };
+    setFlags(next); persist({ flags: next });
+  };
+  const addSport = () => {
+    const s = newSport.trim();
+    if (!s) return;
+    const next = [...sports, s];
+    setSports(next); setNewSport(""); persist({ sports: next });
+  };
+  const removeSport = (s: string) => {
+    const next = sports.filter(x => x !== s);
+    setSports(next); persist({ sports: next });
+  };
+
+  if (loading) return <div className="text-muted-foreground">Loading...</div>;
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-primary mb-4">Filters & Settings</h1>
-      <div className="bg-card rounded-xl border border-border p-6 text-muted-foreground">
-        Filter on/off toggles are coming soon. All filters are currently active for users.
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-primary mb-2">Filters & Settings</h1>
+        <p className="text-sm text-muted-foreground mb-4">Toggle which filters appear on the College Matches page for users.</p>
+        <div className="bg-card rounded-xl border border-border p-4 max-w-xl space-y-2">
+          {FILTER_KEYS.map(f => (
+            <label key={f.key} className="flex items-center justify-between p-2 hover:bg-muted/30 rounded cursor-pointer">
+              <span className="text-sm">{f.label}</span>
+              <input type="checkbox" checked={!!flags[f.key]} onChange={() => toggle(f.key)} className="accent-primary w-4 h-4" />
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h2 className="text-xl font-bold text-primary mb-2">Extra Sports</h2>
+        <p className="text-sm text-muted-foreground mb-3">Add sports beyond the default ERHS list (shown to users in onboarding & portfolio).</p>
+        <div className="bg-card rounded-xl border border-border p-4 max-w-xl">
+          <div className="flex gap-2 mb-3">
+            <Input placeholder="e.g. Ultimate Frisbee" value={newSport} onChange={e => setNewSport(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addSport()} />
+            <Button onClick={addSport}>Add</Button>
+          </div>
+          {sports.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No extra sports added yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {sports.map(s => (
+                <li key={s} className="flex justify-between items-center text-sm py-1 px-2 hover:bg-muted/30 rounded">
+                  <span>{s}</span>
+                  <button onClick={() => removeSport(s)} className="text-destructive text-xs hover:underline">Remove</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
