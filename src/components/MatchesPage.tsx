@@ -298,13 +298,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                 </div>
               )}
               
+              {isFilterVisible(flags, "search") && (
               <div>
                 <label className="text-sm font-semibold text-foreground">🔍 Search College by Name</label>
                 <Input placeholder="e.g. University of Maryland" value={collegeSearch}
                   onChange={e => setCollegeSearch(e.target.value)} className="mt-1" />
               </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {isFilterVisible(flags, "distance") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Max Distance: {distance === 0 ? "No Limit" : `${distance} miles`}</label>
                   <input type="range" min="0" max="3000" step="25" value={distance}
@@ -314,6 +317,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <span>No Limit</span><span>3000 mi</span>
                   </div>
                 </div>
+                )}
+                {isFilterVisible(flags, "minDistance") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Min Distance: {minDistance === 0 ? "None" : `${minDistance} miles`}</label>
                   <input type="range" min="0" max="500" step="10" value={minDistance}
@@ -323,9 +328,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <span>None</span><span>500 mi</span>
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {isFilterVisible(flags, "size") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Size</label>
                   <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)}
@@ -337,6 +344,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="verylarge">Very Large (25K+)</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "cost") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Max Tuition/Year</label>
                   <select value={maxCost} onChange={e => { setMaxCost(Number(e.target.value)); setCustomMaxCost(""); }}
@@ -354,6 +363,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     onChange={e => { setCustomMaxCost(e.target.value); setMaxCost(0); }}
                     className="mt-1 text-sm" />
                 </div>
+                )}
+                {isFilterVisible(flags, "state") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">State</label>
                   <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}
@@ -363,6 +374,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="out_of_state">Out-of-State Only</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "tier") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">School Tier</label>
                   <select value={tierFilter} onChange={e => setTierFilter(e.target.value)}
@@ -378,9 +391,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="service_academies">Service Academies</option>
                   </select>
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {isFilterVisible(flags, "classification") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Prestige Class</label>
                   <select value={classificationFilter} onChange={e => setClassificationFilter(e.target.value)}
@@ -392,6 +407,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="tier4">Tier 4 (Strong Regional/Large Publics)</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "athletic") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Athletic Division</label>
                   <select value={athleticFilter} onChange={e => setAthleticFilter(e.target.value)}
@@ -404,6 +421,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="none">No Athletics</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "country") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Country</label>
                   <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
@@ -413,6 +432,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="intl">International Only</option>
                   </select>
                 </div>
+                )}
+                {isFilterVisible(flags, "testPolicy") && (
                 <div>
                   <label className="text-sm font-semibold text-foreground">Test Policy</label>
                   <select value={testPolicyFilter} onChange={e => setTestPolicyFilter(e.target.value)}
@@ -423,8 +444,10 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                     <option value="blind">Test-Blind</option>
                   </select>
                 </div>
+                )}
               </div>
 
+              {isFilterVisible(flags, "msi") && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-foreground">Institutional Classification</label>
@@ -440,6 +463,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
                   </select>
                 </div>
               </div>
+              )}
             </div>
           )}
           {/* International browse-links tier removed — use Country filter instead */}
