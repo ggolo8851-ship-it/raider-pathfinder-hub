@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
+import { loadSiteSettings, isFilterVisible, FeatureFlags, DEFAULT_FILTER_FLAGS } from "@/lib/feature-flags";
+
+// Module-level cache so leaving the Matches tab and coming back doesn't refetch
+// — keyed by the exact filter signature + user profile signature.
+const matchCache = new Map<string, CollegeResult[]>();
+const sigOf = (...parts: any[]) => JSON.stringify(parts);
 
 interface MatchesPageProps {
   profile: UserProfile;
@@ -32,6 +38,11 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [bookmarksLoading, setBookmarksLoading] = useState(false);
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
   const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
+  const [flags, setFlags] = useState<FeatureFlags>({ filters: DEFAULT_FILTER_FLAGS });
+
+  useEffect(() => {
+    loadSiteSettings().then(s => setFlags(s.flags || {}));
+  }, []);
 
   useEffect(() => {
     const users = getUsers();
@@ -68,11 +79,15 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
   useEffect(() => {
     if (tab !== "colleges") return;
-    setLoading(true);
     let cancelled = false;
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculors, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
+    const cacheKey = sigOf(filters, profileSig);
+    const cached = matchCache.get(cacheKey);
+    if (cached) { setColleges(cached); setLoading(false); return; }
+    setLoading(true);
     searchColleges(
       profile.major, filters, email, profile.gpa, profile.aps,
       profile.clubs || [], profile.sat || "", profile.act || "",
@@ -85,7 +100,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       .then(async (results) => {
         if (cancelled) return;
         setColleges(results);
-        // Skip AI re-rank during active name search — it would override exact-match priority.
+        matchCache.set(cacheKey, results);
         if (results.length > 0 && !isSearching) {
           const ranked = await aiRankColleges(results, {
             major: profile.major, gpa: profile.gpa, sat: profile.sat, act: profile.act,
@@ -94,7 +109,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
             interests: profile.interests, isST: profile.isST, testOptional: profile.testOptional,
             vibeAnswers: profile.vibeAnswers, gradYear: profile.gradYear,
           });
-          if (!cancelled) setColleges(ranked);
+          if (!cancelled) { setColleges(ranked); matchCache.set(cacheKey, ranked); }
         }
       })
       .catch(() => { if (!cancelled) setColleges([]); })
