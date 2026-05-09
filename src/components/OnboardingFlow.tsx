@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS } from "@/lib/store";
+import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS, ClubRole, SportRole } from "@/lib/store";
 import { geocodeAddress } from "@/lib/college-api";
+import { loadSiteSettings } from "@/lib/feature-flags";
 import VibePollQuiz from "@/components/VibePollQuiz";
 
 interface OnboardingFlowProps {
@@ -11,6 +12,8 @@ interface OnboardingFlowProps {
 }
 
 const MAX_EXTRAS = 15;
+const CLUB_ROLES: ClubRole["role"][] = ["Member", "Management", "Founder"];
+const SPORT_ROLES: SportRole["role"][] = ["Player", "Captain", "Manager"];
 
 const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [step, setStep] = useState<"grad" | "profile" | "clubs" | "extra" | "polls">("grad");
@@ -20,8 +23,12 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [act, setAct] = useState("");
   const [gradYear, setGradYear] = useState("2027");
   const [selectedAps, setSelectedAps] = useState<string[]>([]);
+  const [apScores, setApScores] = useState<Record<string, number>>({});
   const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
+  const [clubRoles, setClubRoles] = useState<ClubRole[]>([]);
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [sportRoles, setSportRoles] = useState<SportRole[]>([]);
+  const [extraSports, setExtraSports] = useState<string[]>([]);
   const [clubSearch, setClubSearch] = useState("");
   const [apSearch, setApSearch] = useState("");
   const [extracurriculars, setExtracurriculars] = useState<string[]>([]);
@@ -36,9 +43,22 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
   const [state, setState] = useState("MD");
   const [zipcode, setZipcode] = useState("");
 
+  useEffect(() => { loadSiteSettings().then(s => setExtraSports(s.sports || [])); }, []);
+
   const toggleAp = (ap: string) => setSelectedAps(prev => prev.includes(ap) ? prev.filter(a => a !== ap) : [...prev, ap]);
-  const toggleClub = (club: string) => setSelectedClubs(prev => prev.includes(club) ? prev.filter(c => c !== club) : [...prev, club]);
-  const toggleSport = (sport: string) => setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
+  const setApScore = (ap: string, score: number) => setApScores(prev => ({ ...prev, [ap]: score }));
+  const toggleClub = (club: string) => setSelectedClubs(prev => {
+    if (prev.includes(club)) { setClubRoles(r => r.filter(cr => cr.club !== club)); return prev.filter(c => c !== club); }
+    setClubRoles(r => [...r, { club, role: "Member" }]); return [...prev, club];
+  });
+  const toggleSport = (sport: string) => setSelectedSports(prev => {
+    if (prev.includes(sport)) { setSportRoles(r => r.filter(sr => sr.sport !== sport)); return prev.filter(s => s !== sport); }
+    setSportRoles(r => [...r, { sport, role: "Player" }]); return [...prev, sport];
+  });
+  const setClubRole = (club: string, role: ClubRole["role"]) =>
+    setClubRoles(prev => prev.map(cr => cr.club === club ? { ...cr, role } : cr));
+  const setSportRole = (sport: string, role: SportRole["role"]) =>
+    setSportRoles(prev => prev.map(sr => sr.sport === sport ? { ...sr, role } : sr));
 
   const addExtra = () => {
     if (newExtra.trim() && extracurriculars.length < MAX_EXTRAS) {
