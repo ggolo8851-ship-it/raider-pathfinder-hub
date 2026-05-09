@@ -229,24 +229,60 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
           <Input placeholder="Search clubs..." value={clubSearch} onChange={e => setClubSearch(e.target.value)} className="mb-3" />
           <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
             {filteredClubs.map(club => (
-              <label key={club} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
-                {club}
-              </label>
+              <div key={club} className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                  <input type="checkbox" checked={selectedClubs.includes(club)} onChange={() => toggleClub(club)} className="accent-primary" />
+                  <span className="truncate">{club}</span>
+                </label>
+                {selectedClubs.includes(club) && (
+                  <select value={clubRoles.find(cr => cr.club === club)?.role || "Member"}
+                    onChange={e => setClubRole(club, e.target.value as ClubRole["role"])}
+                    className="w-28 p-1 border border-input rounded bg-card text-xs">
+                    {CLUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mb-4">{selectedClubs.length} club(s) selected</p>
 
           <h3 className="text-lg font-bold text-primary mb-2">🏅 Sports</h3>
-          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
-            {ERHS_SPORTS.map(sport => (
-              <label key={sport} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
-                {sport}
-              </label>
+          <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-2 bg-muted/30">
+            {[...ERHS_SPORTS, ...extraSports].map(sport => (
+              <div key={sport} className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                  <input type="checkbox" checked={selectedSports.includes(sport)} onChange={() => toggleSport(sport)} className="accent-primary" />
+                  <span className="truncate">{sport}</span>
+                </label>
+                {selectedSports.includes(sport) && (
+                  <select value={sportRoles.find(sr => sr.sport === sport)?.role || "Player"}
+                    onChange={e => setSportRole(sport, e.target.value as SportRole["role"])}
+                    className="w-28 p-1 border border-input rounded bg-card text-xs">
+                    {SPORT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mb-4">{selectedSports.length} sport(s) selected</p>
+
+          {selectedAps.length > 0 && (
+            <>
+              <label className="text-sm font-semibold text-foreground">AP Exam Scores (1-5, leave blank if not taken)</label>
+              <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto border border-input rounded-lg p-3 mb-4 bg-muted/30">
+                {selectedAps.sort().map(ap => (
+                  <div key={ap} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate flex-1">{ap}</span>
+                    <select value={apScores[ap] || ""} onChange={e => setApScore(ap, Number(e.target.value))}
+                      className="w-16 p-1 border border-input rounded bg-card text-sm">
+                      <option value="">—</option>
+                      {[1, 2, 3, 4, 5].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep("profile")} className="flex-1">Back</Button>
