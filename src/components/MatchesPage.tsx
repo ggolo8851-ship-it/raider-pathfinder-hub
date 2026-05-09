@@ -193,14 +193,6 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
           <p><b>Average SAT:</b> {c.satAvg || "N/A"}</p>
           <p><b>Distance:</b> {c.miles.toFixed(1)} miles {distanceLabel}</p>
           <p><b>Classification:</b> <span className={`font-semibold px-2 py-0.5 rounded ${tierColors[c.tier]}`}>{c.tier} School</span></p>
-          {c.chancePct != null && (
-            <>
-              <p><b>🎯 Your Estimated Chance:</b> <span className="font-bold text-primary">{c.chancePct}%</span></p>
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-r p-2 text-xs text-foreground">
-                ⚠️ Estimated chance is a model — it factors GPA, test scores, AP rigor, ECs, leadership, achievements, and service hours, but cannot see essays, recommendations, demonstrated interest, legacy, or institutional priorities. Treat it as <b>directional, not predictive</b>.
-              </div>
-            </>
-          )}
           {c.setting && <p><b>🌆 Setting:</b> {c.setting}</p>}
           {c.athleticDivision && c.athleticDivision !== "Unknown" && <p><b>🏟️ Athletics:</b> {c.athleticDivision}</p>}
           {c.country && c.country !== "USA" && <p><b>🌍 Country:</b> {c.country}</p>}

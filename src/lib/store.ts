@@ -187,6 +187,7 @@ export const ERHS_SPORTS = [
   "Cross Country",
   "Football (Varsity)",
   "Football (JV)",
+  "Girls Flag Football",
   "Golf",
   "Gymnastics",
   "Indoor Track",
