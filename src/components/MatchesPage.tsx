@@ -83,7 +83,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
-    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculors, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
     const cacheKey = sigOf(filters, profileSig);
     const cached = matchCache.get(cacheKey);
     if (cached) { setColleges(cached); setLoading(false); return; }
