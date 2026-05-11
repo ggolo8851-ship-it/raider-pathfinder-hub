@@ -316,26 +316,52 @@ function calculateFitScore(
   else if (programPct > 0.01) score += 3;
   else score += 1;
 
-  // 3. Vibe matching (max 15 pts)
+  // 3. Vibe matching (max 15 pts) — uses every vibe answer the user provided
   if (vibeAnswers && Object.keys(vibeAnswers).length > 0) {
     const enrollment = college['latest.student.size'] || 0;
     const schoolState = college['school.state'] || '';
     const cost = college['latest.cost.tuition.in_state'] || 0;
+    const locale = Number(college['school.locale']);            // 11-13 city, 21-23 suburb, 31-33 town, 41-43 rural
+    const isCityLocale = locale >= 11 && locale <= 13;
+    const isRuralLocale = locale >= 41 && locale <= 43;
+    const coastalStates = ['CA','OR','WA','HI','AK','FL','NC','SC','GA','VA','MA','RI','CT','NJ','NY','ME','MD','DE'];
+    const mountainStates = ['CO','UT','MT','WY','ID','NV','NM','AZ','VT','NH','WV'];
+    const collegeTownStates = ['IN','MI','IA','OH','PA','VA','NC','TX','MA','CT'];
     let vibeMatch = 0;
-    if (vibeAnswers.classsize === 'small_class' && enrollment < 5000) vibeMatch += 2;
+    // Setting (urban vs rural) — prefer locale code, fall back to enrollment
+    if (vibeAnswers.setting === 'urban' && (isCityLocale || enrollment > 12000)) vibeMatch += 2;
+    else if (vibeAnswers.setting === 'rural' && (isRuralLocale || enrollment < 6000)) vibeMatch += 2;
+    // Class size proxy (small school = small classes)
+    if (vibeAnswers.classsize === 'small_class' && enrollment > 0 && enrollment < 5000) vibeMatch += 2;
     else if (vibeAnswers.classsize === 'large_class' && enrollment > 15000) vibeMatch += 2;
-    if (vibeAnswers.setting === 'urban' && enrollment > 10000) vibeMatch += 2;
-    else if (vibeAnswers.setting === 'rural' && enrollment < 8000) vibeMatch += 2;
+    // Priority — value vs prestige
     if (vibeAnswers.priority === 'value' && cost && cost < 20000) vibeMatch += 3;
+    else if (vibeAnswers.priority === 'value' && cost && cost < 35000) vibeMatch += 1;
     if (vibeAnswers.priority === 'prestige' && admRate && admRate < 0.2) vibeMatch += 3;
-    if (vibeAnswers.weekend === 'big_sports' && enrollment > 20000) vibeMatch += 2;
-    if (vibeAnswers.weekend === 'local_culture' && enrollment < 10000) vibeMatch += 2;
+    else if (vibeAnswers.priority === 'prestige' && admRate && admRate < 0.35) vibeMatch += 1;
+    // Weekend — big-sports vs local-culture
+    if (vibeAnswers.weekend === 'big_sports' && enrollment > 18000) vibeMatch += 2;
+    else if (vibeAnswers.weekend === 'local_culture' && (collegeTownStates.includes(schoolState) || (enrollment > 0 && enrollment < 12000))) vibeMatch += 2;
+    // Climate
     const coldStates = ['ME','VT','NH','MN','WI','MI','MT','ND','SD','WY','AK'];
     const warmStates = ['FL','CA','AZ','TX','HI','NM','LA','MS','AL','GA','SC'];
     if (vibeAnswers.climate === 'cold_ok' && coldStates.includes(schoolState)) vibeMatch += 2;
     if (vibeAnswers.climate === 'warm_pref' && warmStates.includes(schoolState)) vibeMatch += 2;
-    if (vibeAnswers.social === 'large_social' && enrollment > 20000) vibeMatch += 1;
-    if (vibeAnswers.social === 'small_social' && enrollment < 5000) vibeMatch += 1;
+    // Social vibe
+    if (vibeAnswers.social === 'large_social' && enrollment > 18000) vibeMatch += 1;
+    if (vibeAnswers.social === 'small_social' && enrollment > 0 && enrollment < 5000) vibeMatch += 1;
+    // Aesthetic — modern (newer/larger urban) vs traditional (small selective LACs)
+    if (vibeAnswers.aesthetic === 'modern' && (isCityLocale || enrollment > 15000)) vibeMatch += 1;
+    else if (vibeAnswers.aesthetic === 'traditional' && enrollment < 6000 && admRate && admRate < 0.4) vibeMatch += 1;
+    // Study style — quiet (smaller, library-heavy) vs social (urban/large)
+    if (vibeAnswers.study === 'quiet_study' && enrollment > 0 && enrollment < 8000) vibeMatch += 1;
+    else if (vibeAnswers.study === 'social_study' && (isCityLocale || enrollment > 12000)) vibeMatch += 1;
+    // Career support — structured (big career centers at large research U) vs independent (LACs)
+    if (vibeAnswers.career_support === 'structured_career' && enrollment > 10000) vibeMatch += 1;
+    else if (vibeAnswers.career_support === 'independent_career' && enrollment > 0 && enrollment < 6000) vibeMatch += 1;
+    // Quickfire — mountain vs ocean geography
+    if (vibeAnswers.quickfire === 'mountain' && mountainStates.includes(schoolState)) vibeMatch += 1;
+    else if (vibeAnswers.quickfire === 'ocean' && coastalStates.includes(schoolState)) vibeMatch += 1;
     score += Math.min(vibeMatch, 15);
   } else {
     score += 6;
