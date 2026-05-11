@@ -382,10 +382,22 @@ function calculateFitScore(
     score += athleticDivision === "D1" ? 4 : athleticDivision === "D2" ? 3 : athleticDivision === "D3" ? 2 : 2;
   }
 
-  // 9. Interests alignment (max 3 pts)
+  // 9. Interests alignment (max 5 pts) — keyword match against college name + major label
   if (userInterests.length > 0) {
-    const interestStr = userInterests.join(" ").toLowerCase();
-    if (programPct > 0.05 && (interestStr.includes(m) || m.includes(interestStr.split(" ")[0]))) score += 2;
+    const interestTokens = userInterests
+      .join(" ")
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .filter(t => t.length >= 4);
+    const haystack = (
+      (college["school.name"] || "") + " " + (college["school.alias"] || "") + " " + m
+    ).toLowerCase();
+    let hits = 0;
+    for (const t of interestTokens) if (haystack.includes(t)) hits++;
+    if (hits >= 3) score += 5;
+    else if (hits === 2) score += 3;
+    else if (hits === 1) score += 2;
+    if (programPct > 0.05 && interestTokens.some(t => m.includes(t))) score += 1;
     if (userInterests.length >= 3) score += 1;
   }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UNDECIDED_CAREER_EXPLORATIONS, MD_GRADUATION_REQUIREMENTS, ClubRole, SportRole } from "@/lib/store";
+import { useAllClubs } from "@/lib/use-all-clubs";
 import { geocodeAddress } from "@/lib/college-api";
 import { loadSiteSettings } from "@/lib/feature-flags";
 import VibePollQuiz from "@/components/VibePollQuiz";
@@ -99,7 +100,8 @@ const OnboardingFlow = ({ email, onComplete }: OnboardingFlowProps) => {
     onComplete();
   };
 
-  const filteredClubs = ERHS_CLUBS.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
+  const allClubs = useAllClubs();
+  const filteredClubs = allClubs.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
 
   const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 

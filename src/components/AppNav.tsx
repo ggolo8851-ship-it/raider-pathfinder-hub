@@ -23,6 +23,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
     { id: "sat", label: "SAT/ACT", key: "nav.sat" },
     { id: "essays", label: "Essays", key: "nav.essays" },
     { id: "transcripts", label: "Counseling", key: "nav.counseling" },
+    { id: "volunteer", label: "Volunteer", key: "nav.volunteer" },
     { id: "graduation", label: "Graduation", key: "nav.graduation" },
     { id: "faculty", label: "Faculty", key: "nav.faculty" },
     ...customTabs.map(t => ({ id: `custom:${t.slug}`, label: `${t.icon || "📄"} ${t.title}` })),
