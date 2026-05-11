@@ -22,11 +22,14 @@ const classificationColors: Record<string, string> = {
   "Lifestyle": "border-pink-500",
   "Professional": "border-green-500",
   "Service": "border-red-500",
+  "SSL": "border-red-500",
   "Sports & Recreation": "border-teal-500",
   "Sports": "border-teal-500",
   "STEM": "border-cyan-500",
   "Student Government": "border-indigo-500",
   "Hobby": "border-pink-500",
+  "Language": "border-orange-500",
+  "Other": "border-slate-400",
 };
 
 const classificationBadgeColors: Record<string, string> = {
@@ -37,12 +40,23 @@ const classificationBadgeColors: Record<string, string> = {
   "Lifestyle": "bg-pink-100 text-pink-800",
   "Professional": "bg-green-100 text-green-800",
   "Service": "bg-red-100 text-red-800",
+  "SSL": "bg-red-100 text-red-800",
   "Sports & Recreation": "bg-teal-100 text-teal-800",
   "Sports": "bg-teal-100 text-teal-800",
   "STEM": "bg-cyan-100 text-cyan-800",
   "Student Government": "bg-indigo-100 text-indigo-800",
   "Hobby": "bg-pink-100 text-pink-800",
+  "Language": "bg-orange-100 text-orange-800",
+  "Other": "bg-slate-100 text-slate-700",
 };
+
+// Friendly aliases shown in badges/filters (DB stores the raw value, UI prettifies)
+const classificationLabels: Record<string, string> = {
+  SSL: "Service (SSL)",
+  Other: "Cultural / Affinity",
+  Language: "Language & Culture",
+};
+const prettyClass = (c: string) => classificationLabels[c] || c;
 
 const ClubsPage = () => {
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -94,7 +108,7 @@ const ClubsPage = () => {
           <label className="text-sm font-semibold text-foreground">Classification</label>
           <select value={classFilter} onChange={e => setClassFilter(e.target.value)}
             className="w-full p-2 mt-1 border border-input rounded-lg bg-card text-sm">
-            {classifications.map(c => <option key={c} value={c}>{c}</option>)}
+            {classifications.map(c => <option key={c} value={c}>{c === "All" ? "All" : prettyClass(c)}</option>)}
           </select>
         </div>
         <div>
@@ -121,7 +135,7 @@ const ClubsPage = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-foreground">{club.name}</span>
                   {cls && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor}`}>{cls}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor}`}>{prettyClass(cls)}</span>
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground">{club.meeting_day || ""} {isExpanded ? "▲" : "▼"}</span>
@@ -134,7 +148,7 @@ const ClubsPage = () => {
                   {club.schedule && <p><b>Meeting Schedule:</b> {club.schedule}</p>}
                   {club.meeting_day && <p><b>Meeting Day:</b> {club.meeting_day}</p>}
                   {club.location && <p><b>Location:</b> {club.location}</p>}
-                  {cls && <p><b>Classification:</b> <span className={`px-2 py-0.5 rounded-full text-xs ${badgeColor}`}>{cls}</span></p>}
+                  {cls && <p><b>Classification:</b> <span className={`px-2 py-0.5 rounded-full text-xs ${badgeColor}`}>{prettyClass(cls)}</span></p>}
                 </div>
               )}
             </div>
