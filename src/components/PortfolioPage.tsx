@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getUsers, saveUsers, AP_LIST, GRAD_YEARS, ERHS_CLUBS, ERHS_SPORTS, UserProfile, UNDECIDED_CAREER_EXPLORATIONS, VIBE_POLL_QUESTIONS, ClubRole, SportRole } from "@/lib/store";
+import { useAllClubs } from "@/lib/use-all-clubs";
 import { generateResumePDF } from "@/lib/resume-builder";
 import { geocodeAddress } from "@/lib/college-api";
 import VibePollQuiz from "@/components/VibePollQuiz";
@@ -142,7 +143,8 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
     setShowVibeQuiz(false);
   };
 
-  const filteredClubs = ERHS_CLUBS.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
+  const allClubs = useAllClubs();
+  const filteredClubs = allClubs.filter(c => c.toLowerCase().includes(clubSearch.toLowerCase()));
 
   if (showVibeQuiz) {
     return (
