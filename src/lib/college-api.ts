@@ -913,6 +913,21 @@ export async function searchColleges(
         if (!matchHit) return false;
       }
 
+      // When searching by name, require the query to actually match the college name
+      // (token-overlap). Prevents the API from returning unrelated schools.
+      if (hasSearchQuery) {
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+        const q = norm(filters.searchQuery!);
+        const n = norm(c.name);
+        if (q.length >= 2) {
+          const qTokens = q.split(" ").filter(t => t.length >= 2);
+          // Pass if any meaningful token from the query appears in the college name,
+          // OR the whole query substring matches.
+          const ok = n.includes(q) || qTokens.some(t => n.includes(t));
+          if (!ok) return false;
+        }
+      }
+
       return true;
     })
     // Dedupe by id (preserve first occurrence)
