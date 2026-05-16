@@ -307,14 +307,14 @@ function calculateFitScore(
   else if (apCount >= 2) score += 2 * rigorMult;
   else if (apCount >= 1) score += 1 * rigorMult;
 
-  // 2. Major Program Match (max 18 pts)
+  // 2. Major Program Match (max 22 pts) — biggest single fit driver
   const programPct = college[queryField] || 0;
-  if (programPct > 0.25) score += 18;
-  else if (programPct > 0.15) score += 14;
-  else if (programPct > 0.08) score += 10;
-  else if (programPct > 0.03) score += 6;
-  else if (programPct > 0.01) score += 3;
-  else score += 1;
+  if (programPct > 0.30) score += 22;
+  else if (programPct > 0.20) score += 19;
+  else if (programPct > 0.12) score += 15;
+  else if (programPct > 0.06) score += 10;
+  else if (programPct > 0.02) score += 5;
+  else if (programPct > 0) score += 2;
 
   // 3. Vibe matching (max 15 pts) — uses every vibe answer the user provided
   if (vibeAnswers && Object.keys(vibeAnswers).length > 0) {
