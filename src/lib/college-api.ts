@@ -307,14 +307,14 @@ function calculateFitScore(
   else if (apCount >= 2) score += 2 * rigorMult;
   else if (apCount >= 1) score += 1 * rigorMult;
 
-  // 2. Major Program Match (max 18 pts)
+  // 2. Major Program Match (max 22 pts) — biggest single fit driver
   const programPct = college[queryField] || 0;
-  if (programPct > 0.25) score += 18;
-  else if (programPct > 0.15) score += 14;
-  else if (programPct > 0.08) score += 10;
-  else if (programPct > 0.03) score += 6;
-  else if (programPct > 0.01) score += 3;
-  else score += 1;
+  if (programPct > 0.30) score += 22;
+  else if (programPct > 0.20) score += 19;
+  else if (programPct > 0.12) score += 15;
+  else if (programPct > 0.06) score += 10;
+  else if (programPct > 0.02) score += 5;
+  else if (programPct > 0) score += 2;
 
   // 3. Vibe matching (max 15 pts) — uses every vibe answer the user provided
   if (vibeAnswers && Object.keys(vibeAnswers).length > 0) {
@@ -911,6 +911,21 @@ export async function searchColleges(
           ? list.includes("women's college")
           : list.some(s => s === f);
         if (!matchHit) return false;
+      }
+
+      // When searching by name, require the query to actually match the college name
+      // (token-overlap). Prevents the API from returning unrelated schools.
+      if (hasSearchQuery) {
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+        const q = norm(filters.searchQuery!);
+        const n = norm(c.name);
+        if (q.length >= 2) {
+          const qTokens = q.split(" ").filter(t => t.length >= 2);
+          // Pass if any meaningful token from the query appears in the college name,
+          // OR the whole query substring matches.
+          const ok = n.includes(q) || qTokens.some(t => n.includes(t));
+          if (!ok) return false;
+        }
       }
 
       return true;
