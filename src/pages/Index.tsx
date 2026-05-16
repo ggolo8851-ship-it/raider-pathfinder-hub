@@ -16,6 +16,7 @@ import EssayPage from "@/components/EssayPage";
 import GraduationPage from "@/components/GraduationPage";
 import FacultyPage from "@/components/FacultyPage";
 import VolunteerPage from "@/components/VolunteerPage";
+import TermsPage from "@/components/TermsPage";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import CustomTabPage from "@/components/CustomTabPage";
 import LegalConsentPage from "@/components/LegalConsentPage";
@@ -159,6 +160,7 @@ const Index = () => {
       {page === "graduation" && <GraduationPage />}
       {page === "faculty" && <FacultyPage />}
       {page === "volunteer" && <VolunteerPage />}
+      {page === "terms" && <TermsPage />}
       {page.startsWith("custom:") && <CustomTabRouter slug={page.slice(7)} />}
     </div>
   );
