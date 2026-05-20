@@ -83,9 +83,17 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const matchingClubs = (profile.clubs || []).map(c => {
+        const role = profile.clubRoles?.find(r => r.club === c)?.role;
+        return role && role !== "Member" ? `${c} ${role}` : c;
+      });
+      const matchingSports = (profile.sports || []).map(s => {
+        const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+        return role && role !== "Player" ? `${s} ${role}` : s;
+      });
       const fallback = getCareerMatches(
         profile.major, profile.aps,
-        profile.clubs || [], profile.sports || [],
+        matchingClubs, matchingSports,
         profile.isST, profile.extracurriculars || [],
         profile.gpa, profile.achievements || [],
         profile.interests || []
@@ -114,15 +122,23 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
-    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.achievements, profile.serviceHours, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
+    const matchingClubs = (profile.clubs || []).map(c => {
+      const role = profile.clubRoles?.find(r => r.club === c)?.role;
+      return role && role !== "Member" ? `${c} ${role}` : c;
+    });
+    const matchingSports = (profile.sports || []).map(s => {
+      const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+      return role && role !== "Player" ? `${s} ${role}` : s;
+    });
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, matchingClubs, matchingSports, profile.extracurriculars, profile.achievements, profile.serviceHours, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
     const cacheKey = sigOf(filters, profileSig);
     const cached = matchCache.get(cacheKey);
     if (cached) { setColleges(cached); setLoading(false); return; }
     setLoading(true);
     searchColleges(
       profile.major, filters, email, profile.gpa, profile.aps,
-      profile.clubs || [], profile.sat || "", profile.act || "",
-      profile.extracurriculars || [], profile.sports || [],
+      matchingClubs, profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], matchingSports,
       profile.vibeAnswers || {},
       resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional,
