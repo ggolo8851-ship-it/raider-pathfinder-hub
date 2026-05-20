@@ -564,7 +564,9 @@ export async function searchColleges(
   userLat?: number,
   userLon?: number,
   testOptional: boolean = false,
-  interests: string[] = []
+  interests: string[] = [],
+  achievements: string[] = [],
+  serviceHours: number = 0
 ): Promise<CollegeResult[]> {
   const queryField = getMajorField(major);
   const majorLabel = getMajorLabel(major);
@@ -763,7 +765,7 @@ export async function searchColleges(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(name)),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, achievements, serviceHours, classifyAthletics(name)),
         size,
         enrollment,
         costInState,
@@ -785,8 +787,8 @@ export async function searchColleges(
           hasLeadership: /\b(president|captain|founder|leader|director|chair)\b/i.test(
             (clubs.join(" ") + " " + extracurriculars.join(" ")).toLowerCase()
           ),
-          achievementsCount: 0,
-          serviceHours: 0,
+          achievementsCount: achievements.length,
+          serviceHours,
         }),
         testPolicy,
         womenOnly,
@@ -840,7 +842,7 @@ export async function searchColleges(
           clubs, extracurriculars, sports,
           cr.miles, // keep intl distance realistic enough for scoring/filtering
           vibeAnswers, testOptional, userSat, interests,
-          [], 0, "None"
+          achievements, serviceHours, "None"
         );
         // Deterministic per-school nudge (±3) so two intl schools with similar
         // profiles never collide on the exact same fitScore — keeps numbers unique
