@@ -7,6 +7,7 @@ import AuthPage from "@/components/AuthPage";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import AppNav from "@/components/AppNav";
 import HomePage from "@/components/HomePage";
+import InvitePage from "@/components/InvitePage";
 import MatchesPage from "@/components/MatchesPage";
 import PortfolioPage from "@/components/PortfolioPage";
 import ClubsPage from "@/components/ClubsPage";
@@ -137,6 +138,7 @@ const Index = () => {
           username={user.username}
           gradYear={user.profile.gradYear}
           email={email}
+          onNavigate={setPage}
           profile={{
             serviceHours: user.profile.serviceHours || 0,
             isST: user.profile.isST || false,
@@ -148,6 +150,7 @@ const Index = () => {
           }}
         />
       )}
+      {page === "invite" && <InvitePage />}
       {page === "matches" && <MatchesPage key={refreshKey} profile={user.profile} email={email} />}
       {page === "portfolio" && (
         <PortfolioPage email={email} profile={user.profile} userName={user.name}

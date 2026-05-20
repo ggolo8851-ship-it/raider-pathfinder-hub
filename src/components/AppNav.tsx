@@ -17,6 +17,7 @@ const AppNav = ({ currentPage, onNavigate, onLogout, isAdmin, onEnterAdmin }: Ap
 
   const links: { id: string; label: string; key?: string }[] = [
     { id: "home", label: "Home", key: "nav.home" },
+    { id: "invite", label: "Invite", key: "nav.invite" },
     { id: "portfolio", label: "Portfolio", key: "nav.portfolio" },
     { id: "matches", label: "Matches", key: "nav.matches" },
     { id: "clubs", label: "Clubs", key: "nav.clubs" },

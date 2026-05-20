@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
+import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, geocodeAddress, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { loadSiteSettings, isFilterVisible, FeatureFlags, DEFAULT_FILTER_FLAGS } from "@/lib/feature-flags";
@@ -39,6 +39,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
   const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
   const [flags, setFlags] = useState<FeatureFlags>({ filters: DEFAULT_FILTER_FLAGS });
+  const [resolvedOrigin, setResolvedOrigin] = useState<{ lat?: number; lon?: number }>({ lat: profile.lat, lon: profile.lon });
 
   useEffect(() => {
     loadSiteSettings().then(s => setFlags(s.flags || {}));
@@ -51,10 +52,48 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
 
   useEffect(() => {
     let cancelled = false;
+    const hasSavedCoords = Number.isFinite(profile.lat) && Number.isFinite(profile.lon);
+    if (hasSavedCoords) {
+      setResolvedOrigin({ lat: profile.lat, lon: profile.lon });
+      return;
+    }
+    const hasAddress = !!(profile.address?.trim() || profile.city?.trim() || profile.zipcode?.trim());
+    if (!hasAddress) {
+      setResolvedOrigin({});
+      return;
+    }
     (async () => {
+      const coords = await geocodeAddress(profile.address || "", profile.city || "", profile.state || "MD", profile.zipcode || "");
+      if (cancelled) return;
+      if (coords) {
+        const users = getUsers();
+        if (users[email]) {
+          users[email].profile.lat = coords.lat;
+          users[email].profile.lon = coords.lon;
+          saveUsers(users);
+        }
+        setResolvedOrigin(coords);
+      } else {
+        setResolvedOrigin({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [email, profile.address, profile.city, profile.state, profile.zipcode, profile.lat, profile.lon]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const matchingClubs = (profile.clubs || []).map(c => {
+        const role = profile.clubRoles?.find(r => r.club === c)?.role;
+        return role && role !== "Member" ? `${c} ${role}` : c;
+      });
+      const matchingSports = (profile.sports || []).map(s => {
+        const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+        return role && role !== "Player" ? `${s} ${role}` : s;
+      });
       const fallback = getCareerMatches(
         profile.major, profile.aps,
-        profile.clubs || [], profile.sports || [],
+        matchingClubs, matchingSports,
         profile.isST, profile.extracurriculars || [],
         profile.gpa, profile.achievements || [],
         profile.interests || []
@@ -83,19 +122,29 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
-    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
+    const matchingClubs = (profile.clubs || []).map(c => {
+      const role = profile.clubRoles?.find(r => r.club === c)?.role;
+      return role && role !== "Member" ? `${c} ${role}` : c;
+    });
+    const matchingSports = (profile.sports || []).map(s => {
+      const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+      return role && role !== "Player" ? `${s} ${role}` : s;
+    });
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, matchingClubs, matchingSports, profile.extracurriculars, profile.achievements, profile.serviceHours, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
     const cacheKey = sigOf(filters, profileSig);
     const cached = matchCache.get(cacheKey);
     if (cached) { setColleges(cached); setLoading(false); return; }
     setLoading(true);
     searchColleges(
       profile.major, filters, email, profile.gpa, profile.aps,
-      profile.clubs || [], profile.sat || "", profile.act || "",
-      profile.extracurriculars || [], profile.sports || [],
+      matchingClubs, profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], matchingSports,
       profile.vibeAnswers || {},
-      profile.lat, profile.lon,
+      resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional,
-      profile.interests || []
+      profile.interests || [],
+      profile.achievements || [],
+      profile.serviceHours || 0
     )
       .then(async (results) => {
         if (cancelled) return;
@@ -115,26 +164,36 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       .catch(() => { if (!cancelled) setColleges([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
+  }, [profile, resolvedOrigin.lat, resolvedOrigin.lon, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
     if (tab !== "bookmarks") return;
     if (bookmarks.length === 0) { setBookmarkedColleges([]); return; }
+    const matchingClubs = (profile.clubs || []).map(c => {
+      const role = profile.clubRoles?.find(r => r.club === c)?.role;
+      return role && role !== "Member" ? `${c} ${role}` : c;
+    });
+    const matchingSports = (profile.sports || []).map(s => {
+      const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+      return role && role !== "Player" ? `${s} ${role}` : s;
+    });
     setBookmarksLoading(true);
     getCollegesByIds(
       bookmarks, profile.major, profile.gpa, profile.aps,
-      profile.clubs || [], profile.sat || "", profile.act || "",
-      profile.extracurriculars || [], profile.sports || [],
-      profile.vibeAnswers || {}, profile.lat, profile.lon,
-      profile.testOptional, profile.interests || []
+      matchingClubs, profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], matchingSports,
+      profile.vibeAnswers || {}, resolvedOrigin.lat, resolvedOrigin.lon,
+      profile.testOptional, profile.interests || [],
+      profile.achievements || [], profile.serviceHours || 0
     )
       .then(setBookmarkedColleges)
       .catch(() => setBookmarkedColleges([]))
       .finally(() => setBookmarksLoading(false));
-  }, [tab, bookmarks, profile]);
+  }, [tab, bookmarks, profile, resolvedOrigin.lat, resolvedOrigin.lon]);
 
-  const distanceLabel = profile.lat && profile.lon ? "from your address" : "from ERHS";
+  const usingUserAddress = Number.isFinite(resolvedOrigin.lat) && Number.isFinite(resolvedOrigin.lon);
+  const distanceLabel = usingUserAddress ? "from your address" : "from ERHS";
 
   const toggleBookmark = (collegeId: string) => {
     const users = getUsers();
@@ -292,7 +351,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         <>
           {tab === "colleges" && (
             <div className="mb-6 space-y-4">
-              {!profile.lat && (
+              {!usingUserAddress && (
                 <div className="bg-secondary/10 border-l-4 border-secondary rounded-r-lg p-3 text-sm text-foreground">
                   💡 Add your home address in <b>Portfolio</b> for accurate distance calculations from your location.
                 </div>

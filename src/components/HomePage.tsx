@@ -8,6 +8,7 @@ interface HomePageProps {
   username: string;
   gradYear: string;
   email: string;
+  onNavigate?: (page: string) => void;
   profile: {
     serviceHours: number;
     isST: boolean;
@@ -19,8 +20,20 @@ interface HomePageProps {
   };
 }
 
-const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
+const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePageProps) => {
   const [now, setNow] = useState(new Date());
+  const shareUrl = typeof window !== "undefined" ? window.location.origin : "https://raiderhub.lovable.app";
+  const shareText = "Join RaidersMatch to find college matches, ERHS clubs, scholarships, volunteer hours, and graduation help.";
+
+  const shareSite = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: "RaidersMatch", text: shareText, url: shareUrl });
+      return;
+    }
+    await navigator.clipboard.writeText(shareUrl);
+    const { toast } = await import("sonner");
+    toast.success("Invite link copied");
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -62,6 +75,16 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
 
           <div className="mt-4"><RefreshCountdown /></div>
 
+          <div className="bg-card/10 backdrop-blur-sm rounded-xl p-3 mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm font-semibold text-primary-foreground/90">Invite new ERHS students to RaidersMatch</p>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={shareSite} className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Share</button>
+              <a href={`sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Text</a>
+              <a href={`mailto:?subject=${encodeURIComponent("Join RaidersMatch")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Email</a>
+              {onNavigate && <button onClick={() => onNavigate("invite")} className="border border-secondary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary/20 transition-colors">Invite Page</button>}
+            </div>
+          </div>
+
           {daysUntilMarch > 0 && msDiff > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
               <p className="font-bold text-lg">⏳ Financial Aid Countdown:
@@ -90,7 +113,7 @@ const HomePage = ({ username, gradYear, email, profile }: HomePageProps) => {
 
           <div className="flex flex-wrap gap-3 mt-8">
             <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
-              className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-accent text-accent-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               📸 Follow ESS on Instagram
             </a>
             <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
