@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
+import { searchColleges, getCareerMatches, getCollegesByIds, aiRankColleges, aiGetCareerMatches, geocodeAddress, CollegeResult, CareerMatch, SearchFilters } from "@/lib/college-api";
 import { UserProfile, getUsers, saveUsers } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { loadSiteSettings, isFilterVisible, FeatureFlags, DEFAULT_FILTER_FLAGS } from "@/lib/feature-flags";
@@ -39,6 +39,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
   const [expandedCareer, setExpandedCareer] = useState<string | null>(null);
   const [flags, setFlags] = useState<FeatureFlags>({ filters: DEFAULT_FILTER_FLAGS });
+  const [resolvedOrigin, setResolvedOrigin] = useState<{ lat?: number; lon?: number }>({ lat: profile.lat, lon: profile.lon });
 
   useEffect(() => {
     loadSiteSettings().then(s => setFlags(s.flags || {}));
@@ -48,6 +49,36 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const users = getUsers();
     setBookmarks(users[email]?.bookmarks || []);
   }, [email]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const hasSavedCoords = Number.isFinite(profile.lat) && Number.isFinite(profile.lon);
+    if (hasSavedCoords) {
+      setResolvedOrigin({ lat: profile.lat, lon: profile.lon });
+      return;
+    }
+    const hasAddress = !!(profile.address?.trim() || profile.city?.trim() || profile.zipcode?.trim());
+    if (!hasAddress) {
+      setResolvedOrigin({});
+      return;
+    }
+    (async () => {
+      const coords = await geocodeAddress(profile.address || "", profile.city || "", profile.state || "MD", profile.zipcode || "");
+      if (cancelled) return;
+      if (coords) {
+        const users = getUsers();
+        if (users[email]) {
+          users[email].profile.lat = coords.lat;
+          users[email].profile.lon = coords.lon;
+          saveUsers(users);
+        }
+        setResolvedOrigin(coords);
+      } else {
+        setResolvedOrigin({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [email, profile.address, profile.city, profile.state, profile.zipcode, profile.lat, profile.lon]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +114,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
-    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, profile.lat, profile.lon, profile.vibeAnswers, profile.interests);
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
     const cacheKey = sigOf(filters, profileSig);
     const cached = matchCache.get(cacheKey);
     if (cached) { setColleges(cached); setLoading(false); return; }
@@ -93,7 +124,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       profile.clubs || [], profile.sat || "", profile.act || "",
       profile.extracurriculars || [], profile.sports || [],
       profile.vibeAnswers || {},
-      profile.lat, profile.lon,
+      resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional,
       profile.interests || []
     )
@@ -115,7 +146,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       .catch(() => { if (!cancelled) setColleges([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [profile, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
+  }, [profile, resolvedOrigin.lat, resolvedOrigin.lon, distance, minDistance, tab, sizeFilter, maxCost, customMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, debouncedSearch, email]);
 
   // Bookmarks tab: fetch ALL saved colleges directly by ID — ignores all filters
   useEffect(() => {
