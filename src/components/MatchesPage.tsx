@@ -114,7 +114,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
     const effectiveMaxCost = customMaxCost ? Number(customMaxCost) : maxCost;
     const filters: SearchFilters = { distance, minDistance, sizeFilter, maxCost: effectiveMaxCost, stateFilter, tierFilter, classificationFilter, athleticFilter, countryFilter, testPolicyFilter, msiFilter, searchQuery: debouncedSearch };
     const isSearching = debouncedSearch.length > 1;
-    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
+    const profileSig = sigOf(profile.major, profile.gpa, profile.sat, profile.act, profile.aps, profile.clubs, profile.sports, profile.extracurriculars, profile.achievements, profile.serviceHours, profile.testOptional, resolvedOrigin.lat, resolvedOrigin.lon, profile.vibeAnswers, profile.interests);
     const cacheKey = sigOf(filters, profileSig);
     const cached = matchCache.get(cacheKey);
     if (cached) { setColleges(cached); setLoading(false); return; }
@@ -126,7 +126,9 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       profile.vibeAnswers || {},
       resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional,
-      profile.interests || []
+      profile.interests || [],
+      profile.achievements || [],
+      profile.serviceHours || 0
     )
       .then(async (results) => {
         if (cancelled) return;
