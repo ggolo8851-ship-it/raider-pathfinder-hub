@@ -119,19 +119,82 @@ const INTL_ADMIT_FALLBACK: Record<string, number> = {
   "university of copenhagen": 0.45,
 };
 
+const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
+  "london": { lat: 51.5072, lon: -0.1276 },
+  "oxford": { lat: 51.7520, lon: -1.2577 },
+  "cambridge": { lat: 52.2053, lon: 0.1218 },
+  "zurich": { lat: 47.3769, lon: 8.5417 },
+  "lausanne": { lat: 46.5197, lon: 6.6323 },
+  "toronto": { lat: 43.6532, lon: -79.3832 },
+  "montreal": { lat: 45.5019, lon: -73.5674 },
+  "vancouver": { lat: 49.2827, lon: -123.1207 },
+  "singapore": { lat: 1.3521, lon: 103.8198 },
+  "edinburgh": { lat: 55.9533, lon: -3.1883 },
+  "manchester": { lat: 53.4808, lon: -2.2426 },
+  "warwick": { lat: 52.2823, lon: -1.5849 },
+  "bristol": { lat: 51.4545, lon: -2.5879 },
+  "melbourne": { lat: -37.8136, lon: 144.9631 },
+  "sydney": { lat: -33.8688, lon: 151.2093 },
+  "canberra": { lat: -35.2809, lon: 149.1300 },
+  "beijing": { lat: 39.9042, lon: 116.4074 },
+  "shanghai": { lat: 31.2304, lon: 121.4737 },
+  "hong kong": { lat: 22.3193, lon: 114.1694 },
+  "seoul": { lat: 37.5665, lon: 126.9780 },
+  "daejeon": { lat: 36.3504, lon: 127.3845 },
+  "tokyo": { lat: 35.6762, lon: 139.6503 },
+  "kyoto": { lat: 35.0116, lon: 135.7681 },
+  "osaka": { lat: 34.6937, lon: 135.5023 },
+  "munich": { lat: 48.1351, lon: 11.5820 },
+  "heidelberg": { lat: 49.3988, lon: 8.6724 },
+  "leuven": { lat: 50.8798, lon: 4.7005 },
+  "delft": { lat: 52.0116, lon: 4.3571 },
+  "amsterdam": { lat: 52.3676, lon: 4.9041 },
+  "paris": { lat: 48.8566, lon: 2.3522 },
+  "lund": { lat: 55.7047, lon: 13.1910 },
+  "copenhagen": { lat: 55.6761, lon: 12.5683 },
+};
+
+const COUNTRY_COORDS: Record<string, { lat: number; lon: number }> = {
+  "united kingdom": { lat: 51.5072, lon: -0.1276 },
+  "canada": { lat: 45.4215, lon: -75.6972 },
+  "switzerland": { lat: 46.9480, lon: 7.4474 },
+  "singapore": { lat: 1.3521, lon: 103.8198 },
+  "australia": { lat: -35.2809, lon: 149.1300 },
+  "china": { lat: 39.9042, lon: 116.4074 },
+  "hong kong": { lat: 22.3193, lon: 114.1694 },
+  "south korea": { lat: 37.5665, lon: 126.9780 },
+  "japan": { lat: 35.6762, lon: 139.6503 },
+  "germany": { lat: 52.5200, lon: 13.4050 },
+  "belgium": { lat: 50.8503, lon: 4.3517 },
+  "netherlands": { lat: 52.3676, lon: 4.9041 },
+  "france": { lat: 48.8566, lon: 2.3522 },
+  "sweden": { lat: 59.3293, lon: 18.0686 },
+  "denmark": { lat: 55.6761, lon: 12.5683 },
+};
+
+function distanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // Convert an international college row into the CollegeResult shape used by MatchesPage.
 export function intlToCollegeResult(row: IntlCollegeRow, originLat: number, originLon: number): CollegeResult {
   const key = row.name.toLowerCase();
   const fallbackSat = INTL_SAT_FALLBACK[key] ?? null;
   const fallbackAdmit = INTL_ADMIT_FALLBACK[key] ?? null;
   const admissionRate = row.admit_rate ?? fallbackAdmit;
+  const coord = CITY_COORDS[(row.city || "").toLowerCase()] ?? COUNTRY_COORDS[row.country.toLowerCase()];
+  const miles = coord ? distanceMiles(originLat, originLon, coord.lat, coord.lon) : 9999;
   return {
     id: `intl_${row.id}`,
     name: row.name,
     city: row.city || "",
     state: row.country,
     url: row.website || "",
-    miles: 9999, // far — sorting still works, distance label hides for intl
+    miles,
     majorPercentage: 0,
     majorLabel: row.programs[0] || "Various",
     fitScore: 50,
