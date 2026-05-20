@@ -3,22 +3,27 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
-const CLASSIFICATIONS = ["STEM", "Language", "Arts", "Sports", "Hobby", "Cultural", "Honor Society", "Academic", "SSL", "Other"];
+const CLASSIFICATIONS = ["Academic", "Arts", "Cultural", "Honor Society", "Lifestyle", "Professional", "Service", "SSL", "Sports & Recreation", "Sports", "STEM", "Student Government", "Hobby", "Language", "Other"];
 
-function normalizeClassification(raw: string): string {
+function normalizeClassification(raw: string, fallback = ""): string {
+  if (!raw && fallback) return normalizeClassification(fallback);
   if (!raw) return "Other";
   const r = raw.toLowerCase();
+  const exact = CLASSIFICATIONS.find(c => r.trim() === c.toLowerCase());
+  if (exact) return exact;
   if (r.includes("stem") || r.includes("science") || r.includes("tech") || r.includes("engineer") || r.includes("math") || r.includes("robot") || r.includes("comput")) return "STEM";
   if (r.includes("language") || r.includes("french") || r.includes("spanish") || r.includes("japanese") || r.includes("korean") || r.includes("italian") || r.includes("asl")) return "Language";
   if (r.includes("art") || r.includes("music") || r.includes("theatre") || r.includes("theater") || r.includes("dance") || r.includes("creative") || r.includes("fashion") || r.includes("media") || r.includes("band") || r.includes("writing")) return "Arts";
-  if (r.includes("sport") || r.includes("athletic") || r.includes("rec") || r.includes("badminton") || r.includes("tennis") || r.includes("volleyball") || r.includes("frisbee") || r.includes("soccer") || r.includes("basketball")) return "Sports";
+  if (r.includes("sport") || r.includes("athletic") || r.includes("rec") || r.includes("badminton") || r.includes("tennis") || r.includes("volleyball") || r.includes("frisbee") || r.includes("soccer") || r.includes("basketball")) return r.includes("rec") || r.includes("recreation") ? "Sports & Recreation" : "Sports";
   if (r.includes("honor")) return "Honor Society";
-  if (r.includes("ssl") || r.includes("service") || r.includes("volunteer") || r.includes("community")) return "SSL";
+  if (r.includes("student government") || r.includes("sga") || r.includes("council") || r.includes("class board")) return "Student Government";
+  if (r.includes("career") || r.includes("professional") || r.includes("business") || r.includes("fbla") || r.includes("entrepreneur")) return "Professional";
+  if (r.includes("ssl")) return "SSL";
+  if (r.includes("service") || r.includes("volunteer") || r.includes("community") || r.includes("unicef") || r.includes("red cross")) return "Service";
+  if (r.includes("lifestyle") || r.includes("wellness") || r.includes("fitness") || r.includes("mindfulness")) return "Lifestyle";
   if (r.includes("cultural") || r.includes("african") || r.includes("asian") || r.includes("muslim") || r.includes("indian") || r.includes("caribbean") || r.includes("international")) return "Cultural";
   if (r.includes("academic") || r.includes("debate") || r.includes("mock trial") || r.includes("mun") || r.includes("seminar") || r.includes("tutor")) return "Academic";
   if (r.includes("hobby") || r.includes("chess") || r.includes("crochet") || r.includes("origami") || r.includes("baking") || r.includes("cosmet") || r.includes("game")) return "Hobby";
-  const exact = CLASSIFICATIONS.find(c => r === c.toLowerCase());
-  if (exact) return exact;
   return "Other";
 }
 
@@ -77,7 +82,7 @@ function parseTab(tabName: string, rows: string[][], skipped: string[]): ClubRec
     if (!name) continue;
     out.push({
       name,
-      classification: normalizeClassification(iClass >= 0 ? (r[iClass] ?? "").toString() : ""),
+      classification: normalizeClassification(iClass >= 0 ? (r[iClass] ?? "").toString() : "", tabName),
       location: iLoc >= 0 ? (r[iLoc] ?? "").toString().trim() || null : null,
       meeting_day: iDay >= 0 ? (r[iDay] ?? "").toString().trim() || null : null,
       schedule: iSched >= 0 ? (r[iSched] ?? "").toString().trim() || null : null,
@@ -89,6 +94,11 @@ function parseTab(tabName: string, rows: string[][], skipped: string[]): ClubRec
   }
   console.log(`[${tabName}] parsed ${out.length} clubs from ${rows.length - 1} data rows`);
   return out;
+}
+
+function sheetRange(tab: string): string {
+  const safe = tab.replace(/'/g, "''");
+  return `'${safe}'!A1:ZZ5000`;
 }
 
 Deno.serve(async (req) => {
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
     const perTab: Record<string, number> = {};
 
     for (const tab of tabs) {
-      const range = `${tab}!A1:ZZ5000`;
+      const range = sheetRange(tab);
       const valRes = await fetch(`${GATEWAY_URL}/spreadsheets/${sheetId}/values/${range}`, { headers });
       if (!valRes.ok) {
         console.log(`[${tab}] fetch failed [${valRes.status}]`);
