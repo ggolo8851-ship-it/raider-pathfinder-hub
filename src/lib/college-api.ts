@@ -1308,13 +1308,16 @@ export async function getCollegesByIds(
   userLat?: number,
   userLon?: number,
   testOptional: boolean = false,
-  interests: string[] = []
+  interests: string[] = [],
+  achievements: string[] = [],
+  serviceHours: number = 0
 ): Promise<CollegeResult[]> {
   if (!ids || ids.length === 0) return [];
   const queryField = getMajorField(major);
   const majorLabel = getMajorLabel(major);
-  const originLat = userLat ?? ERHS_COORDS.lat;
-  const originLon = userLon ?? ERHS_COORDS.lon;
+  const hasUserOrigin = Number.isFinite(userLat) && Number.isFinite(userLon);
+  const originLat = hasUserOrigin ? Number(userLat) : ERHS_COORDS.lat;
+  const originLon = hasUserOrigin ? Number(userLon) : ERHS_COORDS.lon;
 
   const fields = [
     "id", "school.name", "school.city", "school.state", "school.school_url",
@@ -1391,7 +1394,7 @@ export async function getCollegesByIds(
         miles,
         majorPercentage: programPct,
         majorLabel,
-        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, [], 0, classifyAthletics(c['school.name'])),
+        fitScore: calculateFitScore(c, queryField, gpaNum, aps.length, major, clubs, extracurriculars, sports, miles, vibeAnswers, testOptional, userSat, interests, achievements, serviceHours, classifyAthletics(c['school.name'])),
         size: getSchoolSize(enrollment),
         enrollment,
         costInState: c['latest.cost.tuition.in_state'] || null,
