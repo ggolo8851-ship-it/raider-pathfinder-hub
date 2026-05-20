@@ -86,6 +86,16 @@ export async function geocodeAddress(address: string, city: string, state: strin
   const query = [address, city, state, zipcode].filter(Boolean).join(', ');
   if (!query.trim()) return null;
   try {
+    const street = address.trim();
+    const cityStateZip = [city, state, zipcode].map(v => v.trim()).filter(Boolean).join(", ");
+    if (street && cityStateZip) {
+      const censusUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(`${street}, ${cityStateZip}`)}&benchmark=Public_AR_Current&format=json`;
+      const censusResp = await fetch(censusUrl);
+      const census = await censusResp.json();
+      const match = census?.result?.addressMatches?.[0]?.coordinates;
+      if (match?.y && match?.x) return { lat: Number(match.y), lon: Number(match.x) };
+    }
+
     const resp = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
       { headers: { 'User-Agent': 'RaidersMatch/1.0' } }
@@ -558,8 +568,9 @@ export async function searchColleges(
 ): Promise<CollegeResult[]> {
   const queryField = getMajorField(major);
   const majorLabel = getMajorLabel(major);
-  const originLat = userLat ?? ERHS_COORDS.lat;
-  const originLon = userLon ?? ERHS_COORDS.lon;
+  const hasUserOrigin = Number.isFinite(userLat) && Number.isFinite(userLon);
+  const originLat = hasUserOrigin ? Number(userLat) : ERHS_COORDS.lat;
+  const originLon = hasUserOrigin ? Number(userLon) : ERHS_COORDS.lon;
 
   const fields = [
     "id",
@@ -827,7 +838,7 @@ export async function searchColleges(
         const baseFit = calculateFitScore(
           pseudo, queryField, gpaNum, aps.length, major,
           clubs, extracurriculars, sports,
-          0, // distance neutral for intl
+          cr.miles, // keep intl distance realistic enough for scoring/filtering
           vibeAnswers, testOptional, userSat, interests,
           [], 0, "None"
         );
@@ -857,8 +868,8 @@ export async function searchColleges(
       // When searching by name, RELAX geo filters but keep classification/athletic/cost active
       const skipGeoFilters = hasSearchQuery;
       const isIntl = c.isInternational;
-      if (!skipGeoFilters && !isIntl && filters.distance > 0 && c.miles > filters.distance) return false;
-      if (!skipGeoFilters && !isIntl && filters.minDistance > 0 && c.miles < filters.minDistance) return false;
+      if (!skipGeoFilters && filters.distance > 0 && c.miles > filters.distance) return false;
+      if (!skipGeoFilters && filters.minDistance > 0 && c.miles < filters.minDistance) return false;
       if (filters.sizeFilter !== "all") {
         const sizeKey = c.size.toLowerCase().replace(" ", "");
         if (sizeKey !== filters.sizeFilter) return false;
