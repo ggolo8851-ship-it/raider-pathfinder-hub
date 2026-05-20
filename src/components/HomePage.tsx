@@ -113,7 +113,7 @@ const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePagePr
 
           <div className="flex flex-wrap gap-3 mt-8">
             <a href="https://www.instagram.com/erhsstudentsforsuccess/" target="_blank" rel="noopener noreferrer"
-              className="bg-[hsl(340,75%,55%)] text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              className="bg-accent text-accent-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
               📸 Follow ESS on Instagram
             </a>
             <a href="https://www.pgcps.org/schools/eleanor-roosevelt-high" target="_blank" rel="noopener noreferrer"
