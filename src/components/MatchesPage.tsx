@@ -157,15 +157,16 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       bookmarks, profile.major, profile.gpa, profile.aps,
       profile.clubs || [], profile.sat || "", profile.act || "",
       profile.extracurriculars || [], profile.sports || [],
-      profile.vibeAnswers || {}, profile.lat, profile.lon,
+      profile.vibeAnswers || {}, resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional, profile.interests || []
     )
       .then(setBookmarkedColleges)
       .catch(() => setBookmarkedColleges([]))
       .finally(() => setBookmarksLoading(false));
-  }, [tab, bookmarks, profile]);
+  }, [tab, bookmarks, profile, resolvedOrigin.lat, resolvedOrigin.lon]);
 
-  const distanceLabel = profile.lat && profile.lon ? "from your address" : "from ERHS";
+  const usingUserAddress = Number.isFinite(resolvedOrigin.lat) && Number.isFinite(resolvedOrigin.lon);
+  const distanceLabel = usingUserAddress ? "from your address" : "from ERHS";
 
   const toggleBookmark = (collegeId: string) => {
     const users = getUsers();
@@ -323,7 +324,7 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
         <>
           {tab === "colleges" && (
             <div className="mb-6 space-y-4">
-              {!profile.lat && (
+              {!usingUserAddress && (
                 <div className="bg-secondary/10 border-l-4 border-secondary rounded-r-lg p-3 text-sm text-foreground">
                   💡 Add your home address in <b>Portfolio</b> for accurate distance calculations from your location.
                 </div>
