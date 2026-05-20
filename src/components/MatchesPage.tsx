@@ -170,11 +170,19 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
   useEffect(() => {
     if (tab !== "bookmarks") return;
     if (bookmarks.length === 0) { setBookmarkedColleges([]); return; }
+    const matchingClubs = (profile.clubs || []).map(c => {
+      const role = profile.clubRoles?.find(r => r.club === c)?.role;
+      return role && role !== "Member" ? `${c} ${role}` : c;
+    });
+    const matchingSports = (profile.sports || []).map(s => {
+      const role = profile.sportRoles?.find(r => r.sport === s)?.role;
+      return role && role !== "Player" ? `${s} ${role}` : s;
+    });
     setBookmarksLoading(true);
     getCollegesByIds(
       bookmarks, profile.major, profile.gpa, profile.aps,
-      profile.clubs || [], profile.sat || "", profile.act || "",
-      profile.extracurriculars || [], profile.sports || [],
+      matchingClubs, profile.sat || "", profile.act || "",
+      profile.extracurriculars || [], matchingSports,
       profile.vibeAnswers || {}, resolvedOrigin.lat, resolvedOrigin.lon,
       profile.testOptional, profile.interests || [],
       profile.achievements || [], profile.serviceHours || 0
