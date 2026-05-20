@@ -160,7 +160,8 @@ const MatchesPage = ({ profile, email }: MatchesPageProps) => {
       profile.clubs || [], profile.sat || "", profile.act || "",
       profile.extracurriculars || [], profile.sports || [],
       profile.vibeAnswers || {}, resolvedOrigin.lat, resolvedOrigin.lon,
-      profile.testOptional, profile.interests || []
+      profile.testOptional, profile.interests || [],
+      profile.achievements || [], profile.serviceHours || 0
     )
       .then(setBookmarkedColleges)
       .catch(() => setBookmarkedColleges([]))
