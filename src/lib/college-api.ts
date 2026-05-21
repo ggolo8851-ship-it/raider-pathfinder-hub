@@ -83,26 +83,50 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 export async function geocodeAddress(address: string, city: string, state: string, zipcode: string): Promise<{ lat: number; lon: number } | null> {
-  const query = [address, city, state, zipcode].filter(Boolean).join(', ');
-  if (!query.trim()) return null;
-  try {
-    const street = address.trim();
-    const cityStateZip = [city, state, zipcode].map(v => v.trim()).filter(Boolean).join(", ");
-    if (street && cityStateZip) {
-      const censusUrl = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(`${street}, ${cityStateZip}`)}&benchmark=Public_AR_Current&format=json`;
-      const censusResp = await fetch(censusUrl);
-      const census = await censusResp.json();
-      const match = census?.result?.addressMatches?.[0]?.coordinates;
-      if (match?.y && match?.x) return { lat: Number(match.y), lon: Number(match.x) };
-    }
+  const street = address.trim();
+  const c = city.trim();
+  const s = state.trim();
+  const z = zipcode.trim();
+  if (!street && !c && !s && !z) return null;
 
-    const resp = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-      { headers: { 'User-Agent': 'RaidersMatch/1.0' } }
-    );
-    const data = await resp.json();
-    if (data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-  } catch (e) { console.warn('Geocoding failed:', e); }
+  // 1) US Census (very accurate when street + city/state provided)
+  try {
+    const cityStateZip = [c, s, z].filter(Boolean).join(", ");
+    if (street && cityStateZip) {
+      const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(`${street}, ${cityStateZip}`)}&benchmark=Public_AR_Current&format=json`;
+      const r = await fetch(url);
+      const j = await r.json();
+      const m = j?.result?.addressMatches?.[0]?.coordinates;
+      if (m?.y && m?.x) return { lat: Number(m.y), lon: Number(m.x) };
+    }
+  } catch (e) { console.warn('Census geocode failed:', e); }
+
+  // 2) Zippopotam.us — reliable ZIP centroid, CORS-friendly, no auth
+  if (z && /^\d{5}$/.test(z)) {
+    try {
+      const r = await fetch(`https://api.zippopotam.us/us/${z}`);
+      if (r.ok) {
+        const j = await r.json();
+        const p = j?.places?.[0];
+        if (p?.latitude && p?.longitude) return { lat: Number(p.latitude), lon: Number(p.longitude) };
+      }
+    } catch (e) { console.warn('Zip geocode failed:', e); }
+  }
+
+  // 3) Nominatim — progressively looser queries
+  const queries = [
+    [street, c, s, z].filter(Boolean).join(', '),
+    [c, s, z].filter(Boolean).join(', '),
+    [c, s].filter(Boolean).join(', '),
+    z,
+  ].filter(q => q && q.length > 1);
+  for (const q of queries) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`, { headers: { 'User-Agent': 'RaidersMatch/1.0' } });
+      const d = await r.json();
+      if (d?.length > 0) return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) };
+    } catch (e) { console.warn('Nominatim geocode failed for', q, e); }
+  }
   return null;
 }
 
