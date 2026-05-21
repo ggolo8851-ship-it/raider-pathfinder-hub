@@ -23,17 +23,23 @@ interface HomePageProps {
 
 const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePageProps) => {
   const [now, setNow] = useState(new Date());
+  const isMobile = useIsMobile();
   const shareUrl = typeof window !== "undefined" ? window.location.origin : "https://raiderhub.lovable.app";
   const shareText = "Join RaidersMatch to find college matches, ERHS clubs, scholarships, volunteer hours, and graduation help.";
+  const fullMsg = `${shareText}\n\n${shareUrl}`;
 
   const shareSite = async () => {
     if (navigator.share) {
-      await navigator.share({ title: "RaidersMatch", text: shareText, url: shareUrl });
-      return;
+      try { await navigator.share({ title: "RaidersMatch", text: shareText, url: shareUrl }); return; } catch {}
     }
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(fullMsg);
     const { toast } = await import("sonner");
     toast.success("Invite link copied");
+  };
+
+  const openInstagram = async () => {
+    try { await navigator.clipboard.writeText(fullMsg); const { toast } = await import("sonner"); toast.success("Caption + link copied — paste it in your Instagram story or DM"); } catch {}
+    window.open("https://www.instagram.com/erhsstudentsforsuccess/", "_blank", "noopener,noreferrer");
   };
 
   useEffect(() => {
