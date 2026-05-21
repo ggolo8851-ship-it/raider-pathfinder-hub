@@ -1,11 +1,31 @@
+import { useIsMobile } from "@/hooks/use-mobile";
+
 const InvitePage = () => {
+  const isMobile = useIsMobile();
   const shareUrl = typeof window !== "undefined" ? window.location.origin : "https://raiderhub.lovable.app";
   const shareText = "RaidersMatch helps ERHS students find college matches, clubs, scholarships, volunteer hours, and graduation resources.";
+  const fullMsg = `${shareText}\n\n${shareUrl}`;
 
-  const copyInvite = async () => {
-    await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-    const { toast } = await import("sonner");
-    toast.success("Invite copied");
+  const toast = async (kind: "success" | "error", msg: string) => {
+    try { const { toast: t } = await import("sonner"); kind === "success" ? t.success(msg) : t.error(msg); } catch {}
+  };
+
+  const copy = async (text: string, label: string) => {
+    try { await navigator.clipboard.writeText(text); toast("success", `${label} copied`); }
+    catch { toast("error", "Copy failed — long-press to copy manually"); }
+  };
+
+  const shareNative = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ title: "RaidersMatch", text: shareText, url: shareUrl }); return; } catch {}
+    }
+    copy(fullMsg, "Invite");
+  };
+
+  const openInstagram = async () => {
+    await copy(fullMsg, "Caption + link");
+    // Instagram has no public web share intent; open the app/site and let user paste.
+    window.open("https://www.instagram.com/erhsstudentsforsuccess/", "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -16,16 +36,38 @@ const InvitePage = () => {
         <p className="text-muted-foreground leading-relaxed mb-6">
           Build your ERHS profile, discover colleges that fit your goals, browse clubs, track graduation steps, and find volunteer opportunities in one place.
         </p>
+
+        <div className="rounded-lg bg-muted/40 border border-border p-3 mb-6 flex items-center justify-between gap-3 flex-wrap">
+          <a href={shareUrl} className="text-primary font-mono text-sm underline break-all">{shareUrl}</a>
+          <button onClick={() => copy(shareUrl, "Link")} className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-sm font-semibold hover:opacity-90">Copy link</button>
+        </div>
+
         <div className="grid sm:grid-cols-3 gap-3 mb-6">
           <div className="rounded-lg border border-border p-4"><b>College matches</b><p className="text-sm text-muted-foreground mt-1">Personalized by major, scores, activities, vibe, cost, and distance.</p></div>
           <div className="rounded-lg border border-border p-4"><b>ERHS clubs</b><p className="text-sm text-muted-foreground mt-1">Find organizations and activities that match your interests.</p></div>
           <div className="rounded-lg border border-border p-4"><b>Student tools</b><p className="text-sm text-muted-foreground mt-1">Graduation, SAT/ACT, essays, transcripts, and SSL support.</p></div>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          <button onClick={copyInvite} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Copy invite</button>
-          <a href={`sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`} className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Text it</a>
-          <a href={`mailto:?subject=${encodeURIComponent("Join RaidersMatch")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`} className="bg-muted text-foreground px-5 py-2.5 rounded-lg font-semibold hover:bg-muted/80 transition-colors">Email it</a>
+          <button onClick={shareNative} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Share…</button>
+          <button onClick={() => copy(fullMsg, "Invite")} className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Copy invite</button>
+          <a
+            href={`mailto:?subject=${encodeURIComponent("Join RaidersMatch")}&body=${encodeURIComponent(`${shareText}\n\nOpen RaidersMatch: ${shareUrl}`)}`}
+            className="bg-muted text-foreground px-5 py-2.5 rounded-lg font-semibold hover:bg-muted/80 transition-colors">Email it</a>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(fullMsg)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="bg-[#25D366] text-white px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">WhatsApp</a>
+          <button onClick={openInstagram} className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Instagram</button>
+          {isMobile && (
+            <a
+              href={`sms:?&body=${encodeURIComponent(fullMsg)}`}
+              className="bg-secondary text-secondary-foreground px-5 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">Text it</a>
+          )}
         </div>
+        {!isMobile && (
+          <p className="text-xs text-muted-foreground mt-3">Text-message sharing appears automatically on phones and tablets that can send SMS.</p>
+        )}
       </section>
     </main>
   );
