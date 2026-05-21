@@ -97,20 +97,17 @@ const PortfolioPage = ({ email, profile, userName, onUpdate }: PortfolioPageProp
     setSaving(true);
     let lat = profile.lat;
     let lon = profile.lon;
+    const hasAnyAddr = !!(address.trim() || city.trim() || zipcode.trim());
     const addrChanged = address !== profile.address || city !== profile.city || state !== profile.state || zipcode !== profile.zipcode;
-    if (addrChanged) {
-      const hasAnyAddr = !!(address.trim() || city.trim() || state.trim() || zipcode.trim());
-      if (!hasAnyAddr) {
-        // User cleared their address — revert to ERHS default
-        lat = undefined; lon = undefined;
+    if (!hasAnyAddr) {
+      lat = undefined; lon = undefined;
+    } else if (addrChanged || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+      const coords = await geocodeAddress(address, city, state, zipcode);
+      if (coords) {
+        lat = coords.lat; lon = coords.lon;
+        try { (await import("sonner")).toast.success("Address saved — distances will use your location."); } catch {}
       } else {
-        const coords = await geocodeAddress(address, city, state, zipcode);
-        if (coords) { lat = coords.lat; lon = coords.lon; }
-        else {
-          // Geocode failed — clear so we fall back to ERHS instead of using stale coords
-          lat = undefined; lon = undefined;
-          try { (await import("sonner")).toast.error("Couldn't find that address — distances will use ERHS until you fix it."); } catch {}
-        }
+        try { (await import("sonner")).toast.error("Couldn't locate that address. Try adding ZIP or street + city + state."); } catch {}
       }
     }
 
