@@ -86,11 +86,13 @@ const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePagePr
             <p className="text-sm font-semibold text-primary-foreground/90">Invite new ERHS students to RaidersMatch</p>
             <div className="flex flex-wrap gap-2">
               <button onClick={shareSite} className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Share</button>
-              <a href={`sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Text</a>
-              <a href={`mailto:?subject=${encodeURIComponent("Join RaidersMatch")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Email</a>
-              {onNavigate && <button onClick={() => onNavigate("invite")} className="border border-secondary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary/20 transition-colors">Invite Page</button>}
+              {isMobile && <a href={`sms:?&body=${encodeURIComponent(fullMsg)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Text</a>}
+              <a href={`mailto:?subject=${encodeURIComponent("Join RaidersMatch")}&body=${encodeURIComponent(`${shareText}\n\nOpen RaidersMatch: ${shareUrl}`)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Email</a>
+              <button onClick={openInstagram} className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Instagram</button>
+              {onNavigate && <button onClick={() => onNavigate("invite")} className="border border-secondary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary/20 transition-colors">More options</button>}
             </div>
           </div>
+
 
           {daysUntilMarch > 0 && msDiff > 0 && (
             <div className="bg-destructive/20 backdrop-blur-sm border-l-4 border-destructive rounded-r-xl p-4 mt-4">
