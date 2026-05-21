@@ -3,7 +3,6 @@ import { ROADMAP_ITEMS } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RefreshCountdown from "@/components/RefreshCountdown";
 import EditableText from "@/components/EditableText";
-import EditableText from "@/components/EditableText";
 
 
 interface HomePageProps {
