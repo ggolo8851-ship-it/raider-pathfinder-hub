@@ -1,25 +1,9 @@
 project_id = "sdlvrmfbyaithvfxhbao"
 
-[functions.set-security-code]
-verify_jwt = true
-
-[functions.verify-security-code-reset]
-verify_jwt = false
-
-[functions.sync-clubs]
-verify_jwt = false
-
-[functions.ai-rank-colleges]
-verify_jwt = true
-
-[functions.ai-rank-careers]
-verify_jwt = true
-
-[functions.grade-essay]
-verify_jwt = true
-
-[functions.monthly-refresh]
-verify_jwt = false
-
-[functions.subscribe-newsletter]
-verify_jwt = false
+[functions]
+  [functions.set-security-code]
+    verify_jwt = true
+  [functions.verify-security-code-reset]
+    verify_jwt = false
+  [functions.subscribe-newsletter]
+    verify_jwt = false
