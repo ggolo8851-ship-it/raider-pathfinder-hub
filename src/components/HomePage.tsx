@@ -243,6 +243,29 @@ const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePagePr
             <p className="text-sm text-muted-foreground">Achievements</p>
           </div>
         </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mt-10">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <h3 className="text-xl font-bold text-primary mb-1">🚀 Top Raiders</h3>
+            <p className="text-xs text-muted-foreground mb-3">Most invites in the last 30 days. Share your link to climb.</p>
+            {leaderboard.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No referrals yet — be the first to invite someone!</p>
+            ) : (
+              <ol className="space-y-1 text-sm">
+                {leaderboard.map((row, i) => {
+                  const isMe = user?.id === row.inviter_user_id;
+                  return (
+                    <li key={row.inviter_user_id} className={`flex justify-between py-1 border-b border-border/50 ${isMe ? "font-bold text-secondary" : ""}`}>
+                      <span><span className="inline-block w-6">#{i + 1}</span>{row.display_name}{isMe ? " (you)" : ""}</span>
+                      <span className="font-semibold">{row.count}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+          <NewsletterSignup source="home" defaultGradYear={gradYear} />
+        </div>
       </div>
     </div>
   );
