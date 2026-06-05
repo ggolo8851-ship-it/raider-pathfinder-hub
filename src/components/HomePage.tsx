@@ -3,7 +3,7 @@ import { ROADMAP_ITEMS } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RefreshCountdown from "@/components/RefreshCountdown";
 import EditableText from "@/components/EditableText";
-import NewsletterSignup from "@/components/NewsletterSignup";
+
 import { useAuth } from "@/hooks/useAuth";
 import {
   buildShareUrl, getMyReferralCode, getMyReferralCount, getReferralLeaderboard,
@@ -264,7 +264,7 @@ const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePagePr
               </ol>
             )}
           </div>
-          <NewsletterSignup source="home" defaultGradYear={gradYear} />
+          
         </div>
       </div>
     </div>
