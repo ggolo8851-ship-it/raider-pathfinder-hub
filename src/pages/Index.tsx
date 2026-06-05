@@ -23,6 +23,7 @@ import CustomTabPage from "@/components/CustomTabPage";
 import LegalConsentPage from "@/components/LegalConsentPage";
 import { fetchPublishedTabs, CustomTab } from "@/lib/custom-tabs";
 import { trackVisit } from "@/lib/visit-tracker";
+import { captureRefFromUrl, applyPendingReferral } from "@/lib/referrals";
 
 const CustomTabRouter = ({ slug }: { slug: string }) => {
   const [tab, setTab] = useState<CustomTab | null>(null);
@@ -40,6 +41,9 @@ const Index = () => {
   const [legalAccepted, setLegalAccepted] = useState<boolean | null>(null);
 
   const email = authUser?.email?.toLowerCase() ?? null;
+
+  // Capture ?ref=<code> from inbound links before auth so we can credit on signup.
+  useEffect(() => { captureRefFromUrl(); }, []);
 
   // Bridge Supabase auth into local profile store
   useEffect(() => {
@@ -72,6 +76,8 @@ const Index = () => {
         .maybeSingle();
       if (cancelled) return;
       setLegalAccepted(!!data?.legal_accepted_at);
+      // Credit referrer (no-op if none captured or already credited)
+      applyPendingReferral(authUser.id).catch(() => {/* best-effort */});
     })();
     return () => { cancelled = true; };
   }, [authUser?.id]);
