@@ -74,7 +74,7 @@ const PromotionPanel = () => {
     }
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadFlag(); }, []);
 
   const exportCsv = () => {
     const header = "email,grad_year,source,beehiiv_status,created_at\n";
