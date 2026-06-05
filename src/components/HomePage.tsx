@@ -3,6 +3,12 @@ import { ROADMAP_ITEMS } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import RefreshCountdown from "@/components/RefreshCountdown";
 import EditableText from "@/components/EditableText";
+import NewsletterSignup from "@/components/NewsletterSignup";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  buildShareUrl, getMyReferralCode, getMyReferralCount, getReferralLeaderboard,
+  type LeaderboardEntry,
+} from "@/lib/referrals";
 
 
 interface HomePageProps {
@@ -24,9 +30,22 @@ interface HomePageProps {
 const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePageProps) => {
   const [now, setNow] = useState(new Date());
   const isMobile = useIsMobile();
-  const shareUrl = typeof window !== "undefined" ? window.location.origin : "https://raiderhub.lovable.app";
+  const { user } = useAuth();
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [refCount, setRefCount] = useState(0);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://raiderhub.lovable.app";
+  const shareUrl = buildShareUrl(baseUrl, refCode);
   const shareText = "Join RaidersMatch to find college matches, ERHS clubs, scholarships, volunteer hours, and graduation help.";
   const fullMsg = `${shareText}\n\n${shareUrl}`;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getMyReferralCode(user.id).then(setRefCode);
+    getMyReferralCount(user.id).then(setRefCount);
+    getReferralLeaderboard(10).then(setLeaderboard);
+  }, [user?.id]);
 
   const shareSite = async () => {
     if (navigator.share) {
@@ -83,7 +102,14 @@ const HomePage = ({ username, gradYear, email, onNavigate, profile }: HomePagePr
           <div className="mt-4"><RefreshCountdown /></div>
 
           <div className="bg-card/10 backdrop-blur-sm rounded-xl p-3 mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm font-semibold text-primary-foreground/90">Invite new ERHS students to RaidersMatch</p>
+            <div>
+              <p className="text-sm font-semibold text-primary-foreground/90">Invite new ERHS students to RaidersMatch</p>
+              {refCode && (
+                <p className="text-xs text-primary-foreground/70 mt-0.5">
+                  Your invite code: <span className="font-mono font-bold text-secondary">{refCode}</span> · You've referred <span className="font-bold text-secondary">{refCount}</span>
+                </p>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={shareSite} className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Share</button>
               {isMobile && <a href={`sms:?&body=${encodeURIComponent(fullMsg)}`} className="bg-primary-foreground text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Text</a>}
