@@ -1,45 +1,58 @@
-# Fix Beehiiv + Add Automated App Emails
+# Email setup: Beehiiv welcome fix + automated app emails
 
-## Part 1 — Fix Beehiiv newsletter signup (root cause)
+Beehiiv keeps handling newsletter blasts (from `raiderhub@mail.beehiiv.com`). Lovable handles automated per-user app emails from a new sender on your domain.
 
-The `subscribe-newsletter` function is calling Beehiiv's V2 API with a raw UUID. Beehiiv V2 requires the ID prefixed with `pub_`. That's why subscribers save locally but no welcome email goes out.
+## Part 1 — Fix Beehiiv welcome email
 
-**Steps:**
-1. Update the stored `BEEHIIV_PUBLICATION_ID` secret to `pub_0b7dc972-9fcb-4e12-b0cb-9b7a8c2fa9c9` (secure popup — you paste once).
-2. Harden `supabase/functions/subscribe-newsletter/index.ts`:
-   - Auto-prepend `pub_` if missing (belt-and-suspenders).
-   - Return clearer errors (`bad_publication_id`, `bad_api_key`, `rate_limited`) instead of swallowing them.
-   - Only mark the local row `sent` after Beehiiv returns 200.
-3. Update `NewsletterSignup.tsx` so the success toast only says "Check your inbox" when Beehiiv actually accepted it; otherwise show "Saved — we'll retry the confirmation email shortly."
-4. Redeploy the function and test with your real email. Confirm the function log shows `beehiiv: sent` and the welcome email arrives.
+1. Update the stored `BEEHIIV_PUBLICATION_ID` secret to `pub_0b7dc972-9fcb-4e12-b0cb-9b7a8c2fa9c9` (secure popup, paste once).
+2. The `subscribe-newsletter` function is already hardened to auto-prepend `pub_`, surface real Beehiiv status, and only mark the local row confirmed after a 200.
+3. Redeploy + test with a real email — confirm the function log shows `beehiiv: sent` and the welcome arrives.
 
-## Part 2 — Automated in-app emails (you don't draft anything)
+## Part 2 — Sender domain for automated app emails
 
-Use Lovable Cloud's own email system (separate from Beehiiv, which stays for newsletter blasts). I write all templates; you approve copy.
+Set up `notify.raiderhub.org` through Lovable.
 
-**Email domain:** check current status — if no domain is set up, I'll surface the one-click setup dialog. The sender will be something like `notify.raidermatch.org`.
+- One-time: you add 2 NS records at your domain registrar (a dialog will walk you through it).
+- DNS propagation: up to a few hours; emails start sending automatically once verified.
+- This is fully separate from Beehiiv — no conflict with `mail.beehiiv.com`.
 
-**Templates I'll build (initial set):**
-- **Welcome / onboarding** — sent after signup once profile is complete.
-- **Your college matches are ready** — sent after the monthly refresh job runs, with the top 5 matches inline + link.
-- **Scholarship & deadline reminders** — weekly digest of upcoming SAT/ACT, FAFSA, and scholarship deadlines relevant to the user's grad year.
-- **New clubs / opportunities digest** — monthly summary of newly added ERHS clubs and volunteer opportunities.
-- **Referral milestone** — "🎉 You hit 5 referrals" type nudges, tied to the referral system already in place.
+## Part 3 — Email infrastructure + templates
 
-**Wiring:**
-- Add a `notification_preferences` table so users can opt out per-category (required for CAN-SPAM).
-- Hook the college-matches email into the existing `monthly-refresh` edge function.
-- Add a new `weekly-deadline-digest` scheduled function (pg_cron, Sundays).
-- All sends go through the queue (`send-transactional-email`) so they're rate-limited, logged in `email_send_log`, and respect the suppression list.
+Once the domain is in (DNS doesn't need to be verified yet to build):
 
-## Part 3 — Verify & hand off
-- Send a test of each new template to your email so you can approve copy before the cron jobs go live.
-- Add an admin view in PromotionPanel showing send counts + bounce/complaint rate so you can monitor health.
+1. Provision the shared email queue (tables, cron, worker).
+2. Scaffold the `send-transactional-email` function and the unsubscribe page route.
+3. Build these templates, brand-styled to match RaiderHub:
+   - **Welcome / onboarding** — sent right after profile setup completes.
+   - **Your college matches are ready** — fired from the existing `monthly-refresh` function with the top 5 matches inline + link.
+   - **Weekly deadline digest** — Sunday cron, segmented by grad year (SAT/ACT/FAFSA/scholarships).
+   - **Clubs & opportunities digest** — monthly, newly added ERHS clubs + volunteer ops.
+   - **Referral milestone** — "🎉 You hit 5 referrals" tied to the existing referral system.
+4. Add a `notification_preferences` table (per-category opt-out for CAN-SPAM).
+5. Hook all sends through the queue (rate-limited, logged in `email_send_log`, respects suppression list).
+
+## Part 4 — Admin monitoring
+
+Add an "Emails" section to PromotionPanel:
+- Sends in last 7/30 days
+- Bounce/complaint/unsubscribe counts
+- Filter by template + recipient lookup
+- All deduped by `message_id`, admin-only.
+
+## Part 5 — Verify
+
+- Test-send each template to your email so you can approve copy before crons go live.
+- Confirm welcome email from Beehiiv arrives.
+- Confirm one automated app email arrives from `notify.raiderhub.org`.
 
 ## Out of scope
-- Beehiiv newsletter content (you write those blasts in Beehiiv's dashboard — that's where it belongs).
-- Push notifications / SMS.
+
+- Newsletter blast content (you write those in Beehiiv).
+- Push / SMS.
+- Sending app emails from `mail.beehiiv.com` (not possible — Beehiiv-owned domain, no per-user transactional API).
 
 ## What I need from you
-- Confirm the sender subdomain you want (default: `notify.raidermatch.org`).
-- After Part 2 templates are drafted, a quick yes/no on the copy for each.
+
+- Approve the secret popup for `BEEHIIV_PUBLICATION_ID`.
+- Click the domain-setup button when it appears and paste the 2 NS records at your registrar.
+- Quick yes/no on copy for each template after test-send.
