@@ -3,6 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { buildShareUrl, getMyReferralCode, getMyReferralCount } from "@/lib/referrals";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import ReferralLeaderboard from "@/components/ReferralLeaderboard";
 
 const InvitePage = () => {
   const isMobile = useIsMobile();
@@ -90,6 +91,8 @@ const InvitePage = () => {
           <p className="text-xs text-muted-foreground mt-3">Text-message sharing appears automatically on phones and tablets that can send SMS.</p>
         )}
       </section>
+
+      <ReferralLeaderboard />
 
       <section>
         <h2 className="text-xl font-bold text-primary mb-2">📬 Stay in the loop</h2>
