@@ -63,7 +63,13 @@ const PromotionPanel = () => {
 
   const removeReferral = async (id: string) => {
     if (!confirm("Delete this referral credit?")) return;
+    const row = referrals.find(r => r.id === id);
     await supabase.from("referrals").delete().eq("id", id);
+    if (row) {
+      await supabase.from("profiles")
+        .update({ referred_by_code: null })
+        .eq("user_id", row.invitee_user_id);
+    }
     load();
   };
 
