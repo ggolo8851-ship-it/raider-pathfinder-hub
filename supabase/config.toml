@@ -5,3 +5,5 @@ project_id = "sdlvrmfbyaithvfxhbao"
     verify_jwt = true
   [functions.verify-security-code-reset]
     verify_jwt = false
+  [functions.subscribe-newsletter]
+    verify_jwt = false
