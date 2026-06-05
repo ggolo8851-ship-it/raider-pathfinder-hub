@@ -1,53 +1,64 @@
-## Goals
+## Goal
 
-1. Add a **Legal & Privacy consent** page that every user must agree to once (new signups + existing users on next visit).
-2. Fix the **international match clustering bug** — every intl school currently gets fitScore 75 or 55, so all percentages look identical. Replace with a real per-school calculation.
-3. **Expand the international college dataset** (Asia + Europe focus) and **add AANAPISI institutions**, with dedupe (no school added twice).
-4. Add **Google Analytics (G-YYQ681MRDY)** to `index.html`.
-5. Small polish: international school matching must reflect country/selectivity differences.
+Help promote RaidersMatch and enable email subscriptions without you owning a domain. Everything below uses Lovable's built-in email subdomain (free, auto-provisioned) plus Beehiiv (free up to 2,500 subs) for the newsletter list.
 
-## Implementation
+## What gets built
 
-### 1. Legal consent (one-time gate)
+### 1. Branded app emails (Lovable Cloud, no domain purchase)
 
-- **DB**: new column `profiles.legal_accepted_at TIMESTAMPTZ NULL` (nullable, no default → null = not yet accepted).
-- **New component** `src/components/LegalConsentPage.tsx` — full RaiderMatch Legal & Privacy text (the version supplied), single "I Agree & Continue" button. Writes `legal_accepted_at = now()` to the user's profile row.
-- **Wire into `Index.tsx**`: after auth + before onboarding, check `profiles.legal_accepted_at`. If null → render `LegalConsentPage`. After accept, continue to onboarding/home.
-- **Signup flow** still works: new users hit it the first time they reach `Index`; existing users hit it once on their next session.
+Lovable provisions a sender like `notify.raiderhub.lovable.app`. DNS is handled automatically — you do nothing.
 
-### 2. International match scoring fix
+Two starter templates:
+- **Welcome email** — sent automatically the first time a user signs up.
+- **"You were invited" email** — when someone uses an invite link with a referral code, the inviter gets credit and the new student gets a welcome with their inviter's name.
 
-Inside `searchColleges` in `src/lib/college-api.ts`, replace the hardcoded `cr.fitScore = matchesMajor ? 75 : 55` with the same `calculateFitScore(...)` call US schools use, adapted to the intl row (synthesize the minimal Scorecard-shape object it expects, or call a small `calculateIntlFitScore` helper that mirrors the logic but uses `row.programs`, `row.admit_rate`, `cr.satAvg`).
+Both use RaidersMatch brand colors and link back to the site.
 
-Each intl school's `fitScore` and `chancePct` will then vary based on:
+### 2. Referral counter + leaderboard
 
-- user GPA / SAT vs school's SAT
-- AP count, EC depth, leadership, achievements
-- school admit rate (country-specific selectivity is captured here via the per-school admit_rate / SAT fallback)
-- major match against `row.programs`
+- Every user gets a unique referral code (short slug from their user id).
+- Invite Page + Home share bar links become `https://raiderhub.lovable.app/?ref=<code>`.
+- On signup, if a `?ref=` is in the URL, store it on the new user's profile.
+- New table `referrals` tracks inviter_user_id → invitee_user_id (unique per invitee, so it can't be gamed by re-signups).
+- New section on Home: **"Top Raiders"** leaderboard — top 10 inviters this month + your own rank/count.
+- Badge on the user's profile: "🚀 5 invites" etc.
 
-### 3. Expanded international + AANAPISI dataset
+### 3. Newsletter signup (Beehiiv)
 
-- **One migration** that inserts new rows into `international_colleges`, guarded by `ON CONFLICT (name) DO NOTHING` (and a unique index on `name` first if not present) so we never duplicate existing entries.
-- New intl rows (Asia + Europe focus): ETH Zurich, EPFL, U Amsterdam, TU Delft, U Copenhagen, Lund, Heidelberg, TU Munich, Sorbonne, KU Leuven, U Tokyo, Kyoto U, Osaka U, NUS, NTU, Tsinghua, Peking, Fudan, Seoul National, KAIST, Yonsei, HKUST, U Hong Kong (skip any already present).
-- **AANAPISI**: add an `institutionalClassification` tag `"AANAPISI"` for the 14 named institutions in `src/lib/college-api.ts` (hardcoded name list, similar to how HBCU/HSI flags are derived). These are US schools — they live in the Scorecard API, so no new table rows needed; they'll just gain the tag on output.
+- New "Subscribe for updates" card on Home and a dedicated section on the Invite page.
+- Form collects email + optional grad year, validates with zod, posts to a `subscribe-newsletter` edge function.
+- Edge function forwards to Beehiiv's public subscription API using a `BEEHIIV_API_KEY` + `BEEHIIV_PUBLICATION_ID` secret.
+- Also mirrors the email into a local `newsletter_subscribers` table so you can export/see the list in the Admin Dashboard even if Beehiiv ever changes.
+- Honors GDPR-style consent checkbox + double opt-in (Beehiiv handles the confirmation email — no domain needed on your end, comes from Beehiiv).
 
-### 4. Google Analytics
+### 4. Admin additions
 
-Add the gtag.js snippet to `<head>` of `index.html` (immediately after `<meta name="author">`).
+- "Newsletter" panel in Admin Dashboard: subscriber count, recent signups, CSV export.
+- "Referrals" panel: leaderboard, raw invite list, ability to revoke a fake referral.
 
-### 5. Files
+## Technical details
 
-```
-NEW   src/components/LegalConsentPage.tsx
-EDIT  src/pages/Index.tsx                  -- gate on legal_accepted_at
-EDIT  src/lib/college-api.ts               -- intl fit/chance fix + AANAPISI tag
-EDIT  index.html                           -- GA4 gtag
-MIG   add profiles.legal_accepted_at + unique(international_colleges.name)
-       + INSERT ... ON CONFLICT DO NOTHING for new intl rows
-```
+**Email infra:** Call `email_domain--check_email_domain_status` → if none, open the email-setup dialog so Lovable auto-provisions `notify.raiderhub.lovable.app`. Then `setup_email_infra` + `scaffold_transactional_email`. Templates live in `supabase/functions/_shared/transactional-email-templates/`.
 
-## Out of scope (not touching this turn)
+**DB migration:**
+- `profiles.referral_code TEXT UNIQUE` (auto-generated on insert via trigger).
+- `profiles.referred_by_code TEXT NULL`.
+- New `referrals` table (inviter_user_id, invitee_user_id UNIQUE, created_at) + GRANTs + RLS (users read own rows, admins read all).
+- New `newsletter_subscribers` table (email UNIQUE, grad_year, source, created_at, confirmed_at) + GRANTs + RLS (anon insert, admin read).
 
-- Distance rule, real-time updates, portfolio/quiz fallback — already implemented in prior turns; will only revisit if you say they're still broken.
-- Visit tracking — already shipped.(make sure everythin works, fix all bugs too, everything shlioudl eb functional_
+**Frontend files touched/added:**
+- `src/lib/referrals.ts` (new) — code gen + ref capture from URL on app load.
+- `src/components/HomePage.tsx` — add Top Raiders leaderboard + Subscribe card.
+- `src/components/InvitePage.tsx` — append `?ref=` to share URLs, add Subscribe section.
+- `src/pages/Index.tsx` — capture `?ref=` once on first auth.
+- `src/components/admin/NewsletterPanel.tsx` + `ReferralsPanel.tsx` (new), wired into `AdminDashboard.tsx`.
+
+**Edge functions:**
+- `subscribe-newsletter` — zod-validate, insert into `newsletter_subscribers`, POST to Beehiiv.
+- Trigger welcome email from existing `send-transactional-email` after first successful login (in `Index.tsx` once per user, guarded by `profiles.welcome_email_sent_at`).
+
+**Secrets needed:** `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` (you create a free Beehiiv account, grab both from Settings → API). I'll prompt for these via the secrets tool when we get there.
+
+## Out of scope this turn
+
+Marketing blast emails from inside Lovable (correctly — that's what Beehiiv is for). Custom domain. Paid Beehiiv tier. SMS promotion.
