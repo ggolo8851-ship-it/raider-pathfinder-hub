@@ -401,36 +401,56 @@ function calculateFitScore(
     score += 6;
   }
 
-  // 4. Club-to-major alignment (max 8 pts)
+  // 4. Club-to-major alignment (max 10 pts) — broader keyword map
   const clubStr = userClubs.join(" ").toLowerCase();
   const m = major.toLowerCase();
   let clubMatch = 0;
-  if ((m.includes("computer") || m.includes("tech") || m.includes("data") || m.includes("cyber") || m.includes("software")) && (clubStr.includes("programming") || clubStr.includes("robotics") || clubStr.includes("stem"))) clubMatch += 4;
-  if ((m.includes("bus") || m.includes("financ") || m.includes("econ") || m.includes("market")) && (clubStr.includes("fbla") || clubStr.includes("business") || clubStr.includes("investment"))) clubMatch += 4;
-  if ((m.includes("health") || m.includes("med") || m.includes("nurse")) && (clubStr.includes("healthcare") || clubStr.includes("red cross"))) clubMatch += 4;
-  if ((m.includes("law") || m.includes("politic")) && (clubStr.includes("mock trial") || clubStr.includes("debate") || clubStr.includes("model united nations"))) clubMatch += 4;
-  if (m.includes("engineer") && (clubStr.includes("robotics") || clubStr.includes("stem"))) clubMatch += 4;
-  if ((m.includes("art") || m.includes("music") || m.includes("theater") || m.includes("film")) && (clubStr.includes("art") || clubStr.includes("theatre") || clubStr.includes("music"))) clubMatch += 4;
-  if ((m.includes("english") || m.includes("journal")) && (clubStr.includes("creative writing") || clubStr.includes("journalism"))) clubMatch += 4;
-  score += Math.min(clubMatch, 8);
+  const matchPairs: Array<[RegExp, RegExp, number]> = [
+    [/(computer|tech|data|cyber|software|inform)/, /(program|robot|stem|coding|cyber|tech|game dev|hackath)/, 5],
+    [/(bus|financ|account|market|econ|entrepreneur)/, /(fbla|deca|business|investment|stock|entrepreneur|marketing)/, 5],
+    [/(health|med|nurse|pharm|dental|pre-?med)/, /(hosa|healthcare|red cross|medical|pre-?med|health)/, 5],
+    [/(law|politic|gov|international rel)/, /(mock trial|debate|model un|model united|youth and gov|moot|law)/, 5],
+    [/(engineer|aerospace)/, /(robot|stem|engineer|tsa|technology student|fab|maker)/, 5],
+    [/(art|design|music|theater|theatre|film|animation)/, /(art|theatre|theater|music|orchestra|choir|band|drama|film|photograph|anime)/, 5],
+    [/(english|journal|writing|commun)/, /(creative writing|journalism|literary|newspaper|yearbook|speech|poetry|book)/, 5],
+    [/(bio|chem|phys|science|enviro|sustain)/, /(science|stem|environment|sustainab|biology|chemistry|garden)/, 5],
+    [/(psych|social work)/, /(psych|peer|mental health|mindfulness|sociology)/, 4],
+    [/(math|stat|data)/, /(math|mathletes|olympiad|stat)/, 4],
+    [/(education|teach)/, /(future educators|teach|tutor|mentor)/, 4],
+    [/(architect|interior)/, /(architect|design)/, 4],
+    [/(sport|kinesi|athletic|exercise)/, /(sport|athletic|fitness|train)/, 4],
+    [/(culinary|hospital|food)/, /(culinary|cook|hospitality|food)/, 4],
+  ];
+  for (const [majR, clubR, pts] of matchPairs) {
+    if (majR.test(m) && clubR.test(clubStr)) { clubMatch = Math.max(clubMatch, pts); }
+  }
+  if (/(nhs|honor society|key club|interact|rotary|leadership|student gov|student council)/.test(clubStr)) clubMatch += 2;
+  score += Math.min(clubMatch, 10);
 
-  // 5. Extracurricular depth + leadership (max 8 pts)
+  // 5. Extracurricular depth + leadership (max 10 pts)
   const ecCount = userExtracurriculars.length + userSports.length + userClubs.length;
   let ecScore = 0;
-  if (ecCount >= 8) ecScore += 5;
-  else if (ecCount >= 5) ecScore += 4;
-  else if (ecCount >= 3) ecScore += 3;
+  if (ecCount >= 10) ecScore += 6;
+  else if (ecCount >= 7) ecScore += 5;
+  else if (ecCount >= 4) ecScore += 4;
+  else if (ecCount >= 2) ecScore += 2;
   else if (ecCount >= 1) ecScore += 1;
   const leadStr = (userClubs.join(" ") + " " + userExtracurriculars.join(" ") + " " + userAchievements.join(" ")).toLowerCase();
-  if (/\b(president|captain|founder|leader|director|chair)\b/.test(leadStr)) ecScore += 3;
-  // Selective schools care more about EC depth
-  if (admRate && admRate < 0.25) ecScore = Math.min(8, ecScore * 1.2);
-  score += Math.min(ecScore, 8);
+  const leadMatches = (leadStr.match(/\b(president|captain|founder|leader|director|chair|editor|head|vice president|treasurer|secretary)\b/g) || []).length;
+  if (leadMatches >= 3) ecScore += 4;
+  else if (leadMatches >= 1) ecScore += 3;
+  if (admRate && admRate < 0.25) ecScore = Math.min(10, ecScore * 1.25);
+  score += Math.min(ecScore, 10);
 
-  // 6. Achievements signal (max 4 pts)
-  if (userAchievements.length >= 5) score += 4;
-  else if (userAchievements.length >= 3) score += 3;
-  else if (userAchievements.length >= 1) score += 2;
+  // 6. Achievements signal (max 6 pts) — competitive distinctions count more
+  const achStr = userAchievements.join(" ").toLowerCase();
+  let achScore = 0;
+  if (userAchievements.length >= 5) achScore += 3;
+  else if (userAchievements.length >= 3) achScore += 2;
+  else if (userAchievements.length >= 1) achScore += 1;
+  if (/(national|international|usaco|aime|usamo|olympiad|finalist|gold|first place|1st place|world)/.test(achStr)) achScore += 3;
+  else if (/(state|regional|county|district|silver|second place|2nd place)/.test(achStr)) achScore += 2;
+  score += Math.min(achScore, 6);
 
   // 7. Service hours civic-fit (max 3 pts)
   if (serviceHours >= 100) score += 3;
