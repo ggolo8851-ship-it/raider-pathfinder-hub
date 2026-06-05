@@ -380,6 +380,36 @@ export type Database = {
         }
         Relationships: []
       }
+      newsletter_subscribers: {
+        Row: {
+          beehiiv_status: string | null
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          grad_year: number | null
+          id: string
+          source: string | null
+        }
+        Insert: {
+          beehiiv_status?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          grad_year?: number | null
+          id?: string
+          source?: string | null
+        }
+        Update: {
+          beehiiv_status?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          grad_year?: number | null
+          id?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       page_visits: {
         Row: {
           email: string | null
@@ -415,6 +445,8 @@ export type Database = {
           id: string
           legal_accepted_at: string | null
           profile_data: Json
+          referral_code: string | null
+          referred_by_code: string | null
           setup_complete: boolean
           updated_at: string
           user_id: string
@@ -430,6 +462,8 @@ export type Database = {
           id?: string
           legal_accepted_at?: string | null
           profile_data?: Json
+          referral_code?: string | null
+          referred_by_code?: string | null
           setup_complete?: boolean
           updated_at?: string
           user_id: string
@@ -445,10 +479,36 @@ export type Database = {
           id?: string
           legal_accepted_at?: string | null
           profile_data?: Json
+          referral_code?: string | null
+          referred_by_code?: string | null
           setup_complete?: boolean
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          invitee_user_id: string
+          inviter_code: string | null
+          inviter_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitee_user_id: string
+          inviter_code?: string | null
+          inviter_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitee_user_id?: string
+          inviter_code?: string | null
+          inviter_user_id?: string
         }
         Relationships: []
       }
