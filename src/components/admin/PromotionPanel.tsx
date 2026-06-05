@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
 
 interface Subscriber {
   id: string;
@@ -23,6 +25,31 @@ const PromotionPanel = () => {
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [savingFlag, setSavingFlag] = useState(false);
+
+  const loadFlag = async () => {
+    const { data } = await supabase
+      .from("site_settings").select("feature_flags").eq("id", "global").maybeSingle();
+    const flags = ((data as any)?.feature_flags || {}) as Record<string, any>;
+    setShowLeaderboard(flags.showLeaderboard !== false);
+  };
+
+  const toggleLeaderboard = async (next: boolean) => {
+    setSavingFlag(true);
+    const { data } = await supabase
+      .from("site_settings").select("feature_flags").eq("id", "global").maybeSingle();
+    const flags = ((data as any)?.feature_flags || {}) as Record<string, any>;
+    flags.showLeaderboard = next;
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ id: "global", feature_flags: flags }, { onConflict: "id" });
+    setSavingFlag(false);
+    if (error) { toast.error("Could not save setting"); return; }
+    setShowLeaderboard(next);
+    toast.success(next ? "Leaderboard is now visible to students" : "Leaderboard hidden from students");
+  };
+
 
   const load = async () => {
     setLoading(true);
@@ -47,7 +74,7 @@ const PromotionPanel = () => {
     }
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadFlag(); }, []);
 
   const exportCsv = () => {
     const header = "email,grad_year,source,beehiiv_status,created_at\n";
@@ -83,6 +110,23 @@ const PromotionPanel = () => {
 
   return (
     <div className="space-y-8">
+      <section className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-semibold text-foreground">Show Top Raiders leaderboard to students</h2>
+          <p className="text-sm text-muted-foreground">Appears on the Invite page. Turn off to hide it from everyone.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showLeaderboard}
+            disabled={savingFlag}
+            onChange={(e) => toggleLeaderboard(e.target.checked)}
+            className="h-5 w-5"
+          />
+          <span className="text-sm font-semibold">{showLeaderboard ? "Visible" : "Hidden"}</span>
+        </label>
+      </section>
+
       <section>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-2xl font-bold text-primary">📬 Newsletter Subscribers ({subs.length})</h1>

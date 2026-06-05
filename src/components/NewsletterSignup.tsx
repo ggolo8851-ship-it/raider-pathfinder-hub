@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
   source?: string;
@@ -12,11 +13,18 @@ interface Props {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const NewsletterSignup = ({ source = "site", defaultGradYear, className = "", compact = false }: Props) => {
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [gradYear, setGradYear] = useState<string>(defaultGradYear ? String(defaultGradYear) : "");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Prefill with the signed-in user's email (they can still edit).
+  useEffect(() => {
+    if (user?.email && !email) setEmail(user.email);
+  }, [user?.email]);
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
