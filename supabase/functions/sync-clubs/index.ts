@@ -3,28 +3,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
-const CLASSIFICATIONS = ["Academic", "Arts", "Cultural", "Honor Society", "Lifestyle", "Professional", "Service", "SSL", "Sports & Recreation", "Sports", "STEM", "Student Government", "Hobby", "Language", "Other"];
-
 function normalizeClassification(raw: string, fallback = ""): string {
-  if (!raw && fallback) return normalizeClassification(fallback);
-  if (!raw) return "Other";
-  const r = raw.toLowerCase();
-  const exact = CLASSIFICATIONS.find(c => r.trim() === c.toLowerCase());
-  if (exact) return exact;
-  if (r.includes("stem") || r.includes("science") || r.includes("tech") || r.includes("engineer") || r.includes("math") || r.includes("robot") || r.includes("comput")) return "STEM";
-  if (r.includes("language") || r.includes("french") || r.includes("spanish") || r.includes("japanese") || r.includes("korean") || r.includes("italian") || r.includes("asl")) return "Language";
-  if (r.includes("art") || r.includes("music") || r.includes("theatre") || r.includes("theater") || r.includes("dance") || r.includes("creative") || r.includes("fashion") || r.includes("media") || r.includes("band") || r.includes("writing")) return "Arts";
-  if (r.includes("sport") || r.includes("athletic") || r.includes("rec") || r.includes("badminton") || r.includes("tennis") || r.includes("volleyball") || r.includes("frisbee") || r.includes("soccer") || r.includes("basketball")) return r.includes("rec") || r.includes("recreation") ? "Sports & Recreation" : "Sports";
-  if (r.includes("honor")) return "Honor Society";
-  if (r.includes("student government") || r.includes("sga") || r.includes("council") || r.includes("class board")) return "Student Government";
-  if (r.includes("career") || r.includes("professional") || r.includes("business") || r.includes("fbla") || r.includes("entrepreneur")) return "Professional";
-  if (r.includes("ssl")) return "SSL";
-  if (r.includes("service") || r.includes("volunteer") || r.includes("community") || r.includes("unicef") || r.includes("red cross")) return "Service";
-  if (r.includes("lifestyle") || r.includes("wellness") || r.includes("fitness") || r.includes("mindfulness")) return "Lifestyle";
-  if (r.includes("cultural") || r.includes("african") || r.includes("asian") || r.includes("muslim") || r.includes("indian") || r.includes("caribbean") || r.includes("international")) return "Cultural";
-  if (r.includes("academic") || r.includes("debate") || r.includes("mock trial") || r.includes("mun") || r.includes("seminar") || r.includes("tutor")) return "Academic";
-  if (r.includes("hobby") || r.includes("chess") || r.includes("crochet") || r.includes("origami") || r.includes("baking") || r.includes("cosmet") || r.includes("game")) return "Hobby";
-  return "Other";
+  // Use the spreadsheet value exactly as shown. Prefer the cell value;
+  // if missing, fall back to the tab name (also used verbatim).
+  const v = (raw ?? "").toString().trim().replace(/\s+/g, " ");
+  if (v) return v;
+  const f = (fallback ?? "").toString().trim().replace(/\s+/g, " ");
+  return f || "Other";
 }
 
 function extractSheetId(url: string): string | null {
