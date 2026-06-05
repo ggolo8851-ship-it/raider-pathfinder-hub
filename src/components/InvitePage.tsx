@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { buildShareUrl, getMyReferralCode, getMyReferralCount } from "@/lib/referrals";
-import NewsletterSignup from "@/components/NewsletterSignup";
+
 import ReferralLeaderboard from "@/components/ReferralLeaderboard";
 
 const InvitePage = () => {
@@ -94,11 +94,6 @@ const InvitePage = () => {
 
       <ReferralLeaderboard />
 
-      <section>
-        <h2 className="text-xl font-bold text-primary mb-2">📬 Stay in the loop</h2>
-        <p className="text-sm text-muted-foreground mb-3">Subscribe for monthly updates: new colleges added, club announcements, scholarship deadlines.</p>
-        <NewsletterSignup source="invite-page" />
-      </section>
     </main>
   );
 };
