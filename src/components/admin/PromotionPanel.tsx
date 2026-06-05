@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
 
 interface Subscriber {
   id: string;
@@ -23,6 +25,31 @@ const PromotionPanel = () => {
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [savingFlag, setSavingFlag] = useState(false);
+
+  const loadFlag = async () => {
+    const { data } = await supabase
+      .from("site_settings").select("feature_flags").eq("id", "global").maybeSingle();
+    const flags = ((data as any)?.feature_flags || {}) as Record<string, any>;
+    setShowLeaderboard(flags.showLeaderboard !== false);
+  };
+
+  const toggleLeaderboard = async (next: boolean) => {
+    setSavingFlag(true);
+    const { data } = await supabase
+      .from("site_settings").select("feature_flags").eq("id", "global").maybeSingle();
+    const flags = ((data as any)?.feature_flags || {}) as Record<string, any>;
+    flags.showLeaderboard = next;
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ id: "global", feature_flags: flags }, { onConflict: "id" });
+    setSavingFlag(false);
+    if (error) { toast.error("Could not save setting"); return; }
+    setShowLeaderboard(next);
+    toast.success(next ? "Leaderboard is now visible to students" : "Leaderboard hidden from students");
+  };
+
 
   const load = async () => {
     setLoading(true);
