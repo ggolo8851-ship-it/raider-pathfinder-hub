@@ -40,12 +40,20 @@ const NewsletterSignup = ({ source = "site", defaultGradYear, className = "", co
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.functions.invoke("subscribe-newsletter", {
+      const { data, error } = await supabase.functions.invoke("subscribe-newsletter", {
         body: { email: trimmed, grad_year: gradYear || null, source },
       });
       if (error) throw error;
       setDone(true);
-      toast.success("You're on the list! Check your inbox to confirm.");
+      const status = (data as any)?.beehiiv;
+      if (status === "sent") {
+        toast.success("You're on the list! Check your inbox to confirm.");
+      } else if (status === "not_configured" || status === "skipped") {
+        toast.success("You're on the list!");
+      } else {
+        toast.success("You're on the list — we'll send your confirmation shortly.");
+        console.warn("Beehiiv status:", status, (data as any)?.detail);
+      }
     } catch (err: any) {
       toast.error(err?.message || "Could not subscribe. Try again later.");
     } finally {
