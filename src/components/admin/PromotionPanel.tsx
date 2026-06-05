@@ -110,6 +110,23 @@ const PromotionPanel = () => {
 
   return (
     <div className="space-y-8">
+      <section className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-semibold text-foreground">Show Top Raiders leaderboard to students</h2>
+          <p className="text-sm text-muted-foreground">Appears on the Invite page. Turn off to hide it from everyone.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showLeaderboard}
+            disabled={savingFlag}
+            onChange={(e) => toggleLeaderboard(e.target.checked)}
+            className="h-5 w-5"
+          />
+          <span className="text-sm font-semibold">{showLeaderboard ? "Visible" : "Hidden"}</span>
+        </label>
+      </section>
+
       <section>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-2xl font-bold text-primary">📬 Newsletter Subscribers ({subs.length})</h1>
