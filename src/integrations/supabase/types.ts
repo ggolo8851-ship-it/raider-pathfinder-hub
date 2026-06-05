@@ -604,7 +604,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      clubs_public: {
+        Row: {
+          classification: string | null
+          id: string | null
+          location: string | null
+          meeting_day: string | null
+          name: string | null
+          purpose: string | null
+          schedule: string | null
+          sponsor: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          classification?: string | null
+          id?: string | null
+          location?: string | null
+          meeting_day?: string | null
+          name?: string | null
+          purpose?: string | null
+          schedule?: string | null
+          sponsor?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          classification?: string | null
+          id?: string | null
+          location?: string | null
+          meeting_day?: string | null
+          name?: string | null
+          purpose?: string | null
+          schedule?: string | null
+          sponsor?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_email: {
