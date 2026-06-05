@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import FacultyAdminPanel from "./FacultyAdminPanel";
 import CustomTabsAdminPanel from "./CustomTabsAdminPanel";
+import PromotionPanel from "./PromotionPanel";
 
 interface Props {
   onExit: () => void;
@@ -21,7 +22,7 @@ interface Props {
 
 type Section =
   | "dashboard" | "access" | "colleges" | "clubs" | "users"
-  | "filters" | "content" | "integrity" | "logs" | "faculty" | "tabs";
+  | "filters" | "content" | "integrity" | "logs" | "faculty" | "tabs" | "promo";
 
 const NAV: [Section, string][] = [
   ["dashboard", "📊 Dashboard"],
@@ -31,6 +32,7 @@ const NAV: [Section, string][] = [
   ["faculty", "👨‍🏫 Faculty Board"],
   ["tabs", "🧩 Custom Tabs"],
   ["users", "👥 Users"],
+  ["promo", "🚀 Promo & Referrals"],
   ["filters", "🎛️ Filters & Settings"],
   ["content", "🎨 Content & UI"],
   ["integrity", "🧪 Search & Data"],
@@ -76,6 +78,7 @@ const AdminDashboard = ({ onExit, onLogout }: Props) => {
           {section === "faculty" && <FacultyAdminPanel />}
           {section === "tabs" && <CustomTabsAdminPanel />}
           {section === "users" && <UsersPanel adminEmail={adminEmail} />}
+          {section === "promo" && <PromotionPanel />}
           {section === "filters" && <FiltersStub />}
           {section === "content" && <ContentUIPanel adminEmail={adminEmail} />}
           {section === "integrity" && <DataIntegrityPanel adminEmail={adminEmail} />}
