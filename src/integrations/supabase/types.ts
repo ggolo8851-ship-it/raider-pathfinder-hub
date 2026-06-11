@@ -380,36 +380,6 @@ export type Database = {
         }
         Relationships: []
       }
-      newsletter_subscribers: {
-        Row: {
-          beehiiv_status: string | null
-          confirmed_at: string | null
-          created_at: string
-          email: string
-          grad_year: number | null
-          id: string
-          source: string | null
-        }
-        Insert: {
-          beehiiv_status?: string | null
-          confirmed_at?: string | null
-          created_at?: string
-          email: string
-          grad_year?: number | null
-          id?: string
-          source?: string | null
-        }
-        Update: {
-          beehiiv_status?: string | null
-          confirmed_at?: string | null
-          created_at?: string
-          email?: string
-          grad_year?: number | null
-          id?: string
-          source?: string | null
-        }
-        Relationships: []
-      }
       page_visits: {
         Row: {
           email: string | null
@@ -674,6 +644,7 @@ export type Database = {
           purpose: string | null
           schedule: string | null
           sponsor: string | null
+          sponsor_email: string | null
           updated_at: string | null
         }
         Insert: {
@@ -685,6 +656,7 @@ export type Database = {
           purpose?: string | null
           schedule?: string | null
           sponsor?: string | null
+          sponsor_email?: never
           updated_at?: string | null
         }
         Update: {
@@ -696,6 +668,7 @@ export type Database = {
           purpose?: string | null
           schedule?: string | null
           sponsor?: string | null
+          sponsor_email?: never
           updated_at?: string | null
         }
         Relationships: []

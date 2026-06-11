@@ -92,15 +92,43 @@ Deno.serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_SHEETS_API_KEY = Deno.env.get("GOOGLE_SHEETS_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
     if (!GOOGLE_SHEETS_API_KEY) throw new Error("GOOGLE_SHEETS_API_KEY missing");
 
-    let sheet_url: string | undefined;
-    try {
-      const body = await req.json();
-      sheet_url = body?.sheet_url;
-    } catch { /* no body */ }
-    sheet_url = sheet_url || DEFAULT_SHEET_URL;
+    // Authorize: either service-role bearer (cron / monthly-refresh) OR an admin user JWT.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const isService = !!token && token === SERVICE_KEY;
+    if (!isService) {
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Not authenticated" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userData, error: uerr } = await userClient.auth.getUser();
+      if (uerr || !userData.user) {
+        return new Response(JSON.stringify({ error: "Not authenticated" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+      const { data: roles } = await admin
+        .from("user_roles").select("role").eq("user_id", userData.user.id).eq("role", "admin").maybeSingle();
+      if (!roles) {
+        return new Response(JSON.stringify({ error: "Admin role required" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Ignore caller-supplied sheet_url; always use the canonical sheet.
+    const sheet_url = DEFAULT_SHEET_URL;
     const sheetId = extractSheetId(sheet_url);
     if (!sheetId) throw new Error("Invalid Google Sheet URL");
 
@@ -159,7 +187,7 @@ Deno.serve(async (req) => {
     console.log(`Total parsed: ${all.length}, after dedupe: ${records.length}, duplicates collapsed: ${dupes.length}`);
     if (dupes.length) console.log("Duplicate names merged:", dupes);
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     const { error } = await supabase.from("clubs").upsert(records, { onConflict: "name" });
     if (error) throw error;
 

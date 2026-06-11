@@ -29,9 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Defer DB calls
         setTimeout(async () => {
           const email = sess.user.email ?? "";
-          const { data: bl } = await supabase
-            .from("email_blacklist").select("id").ilike("email", email).maybeSingle();
-          if (bl) {
+          const { data: blocked } = await supabase.rpc("is_blacklisted", { _email: email });
+          if (blocked === true) {
             setIsBlocked(true);
             await supabase.auth.signOut();
             return;

@@ -1082,9 +1082,9 @@ export async function aiGetCareerMatches(
 // Live clubs fetch — pulls from the synced `clubs` table (kept up-to-date by sync-clubs cron).
 export async function fetchLiveClubs(): Promise<string[] | null> {
   try {
-    const { data, error } = await supabase.from("clubs").select("name").order("name");
+    const { data, error } = await supabase.from("clubs_public" as any).select("name").order("name");
     if (error || !data) return null;
-    return data.map(c => c.name).filter(Boolean);
+    return (data as any[]).map((c: any) => c.name).filter(Boolean);
   } catch {
     return null;
   }
