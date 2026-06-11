@@ -13,7 +13,7 @@ export function useAllClubs(): string[] {
     (async () => {
       const { data } = await supabase.from("clubs_public" as any).select("name");
       if (cancelled) return;
-      const dbNames = (data ?? []).map(c => c.name).filter(Boolean) as string[];
+      const dbNames = ((data as any[]) ?? []).map((c: any) => c.name).filter(Boolean) as string[];
       const seen = new Map<string, string>();
       [...ERHS_CLUBS, ...dbNames].forEach(n => {
         const key = n.trim().toLowerCase();

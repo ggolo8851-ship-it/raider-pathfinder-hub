@@ -86,12 +86,8 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 export async function checkBlacklistAndSignOutIfBlocked(): Promise<boolean> {
   const { data: session } = await supabase.auth.getSession();
   if (!session.session?.user.email) return false;
-  const { data } = await supabase
-    .from("email_blacklist")
-    .select("id")
-    .ilike("email", session.session.user.email)
-    .maybeSingle();
-  if (data) {
+  const { data } = await supabase.rpc("is_blacklisted", { _email: session.session.user.email });
+  if (data === true) {
     await supabase.auth.signOut();
     return true;
   }
