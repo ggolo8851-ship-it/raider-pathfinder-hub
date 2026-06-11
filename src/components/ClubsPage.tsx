@@ -72,7 +72,7 @@ const ClubsPage = () => {
         .from("clubs_public" as any)
         .select("id,name,classification,meeting_day,schedule,sponsor,sponsor_email,purpose,location")
         .order("name", { ascending: true });
-      if (!error && data) setClubs(data as Club[]);
+      if (!error && data) setClubs(data as unknown as Club[]);
       setLoading(false);
     })();
   }, []);

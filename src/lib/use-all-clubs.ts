@@ -11,7 +11,7 @@ export function useAllClubs(): string[] {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("clubs").select("name");
+      const { data } = await supabase.from("clubs_public" as any).select("name");
       if (cancelled) return;
       const dbNames = (data ?? []).map(c => c.name).filter(Boolean) as string[];
       const seen = new Map<string, string>();
