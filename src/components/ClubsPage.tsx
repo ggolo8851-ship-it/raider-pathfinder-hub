@@ -69,7 +69,7 @@ const ClubsPage = () => {
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
-        .from("clubs")
+        .from("clubs_public" as any)
         .select("id,name,classification,meeting_day,schedule,sponsor,sponsor_email,purpose,location")
         .order("name", { ascending: true });
       if (!error && data) setClubs(data as Club[]);
